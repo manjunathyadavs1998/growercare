@@ -33,8 +33,8 @@ JSON
 fi
 
 echo "== Labels used by Dependabot and templates"
-for label in "dependencies:0366d6" "backend:5319e7" "ci:fbca04" "local-dev:c5def5" "feature:a2eeef" "needs-spec:d93f0b" "bug:d73a4a"; do
-  "$GH" label create "${label%%:*}" --color "${label##*:}" --repo "$REPO" --force >/dev/null && echo "   ${label%%:*}"
+for label in "dependencies:0366d6" "backend:5319e7" "ci:fbca04" "local-dev:c5def5" "feature:a2eeef" "needs-spec:d93f0b" "bug:d73a4a" \n             "review:critical:b60205" "review:high:d93f0b" "review:medium:fbca04" "review:low:c2e0c6" "review:clean:0e8a16" "review:incomplete:5319e7"; do
+  "$GH" label create "${label%:*}" --color "${label##*:}" --repo "$REPO" --force >/dev/null && echo "   ${label%:*}"
 done
 
 echo "== Ruleset 'main-protection' (R20/R21)"

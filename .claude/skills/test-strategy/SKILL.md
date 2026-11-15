@@ -75,6 +75,11 @@ description: Plan and write tests for GrowerCare following the project's test py
 - **`@Nested` gotcha (Spring Framework 7):** a nested static `@TestConfiguration` is **not** picked up for `@Nested` test classes. Always add `@Import(MyIT.Stubs.class)` on the outer class. Otherwise the real beans load silently; e.g. the Keycloak `JwtDecoder` rejected every test token with 401 (seen 2026-11-15).
 - **Spring Boot 4 test packages:** `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`, `org.springframework.test.context.bean.override.mockito.MockitoBean`.
 - **Isolation matrix pattern:** insert fixtures into real shards, then assert each user's visible set through **both** the SQL `ScopeFilter` and `PolicyEnforcer` (they must agree). See `CaseIsolationIT`.
+- **Coverage gate (SPEC-PLAT-03):**
+  - **Measurement:** the merged JaCoCo report (`gc-backend/coverage`, unit + IT data of all modules, `*Application` excluded) must show **overall line coverage ≥ 80%**. `scripts/coverage_gate.py` fails `backend-ci / verify` below that.
+  - **Local check:** after `mvn -B verify`, run `python scripts/coverage_gate.py gc-backend/coverage/target/site/jacoco-aggregate/jacoco.xml`.
+  - **SonarQube Cloud** also requires ≥ 80% on new code. Write the spec's parameterized rows; don't chase coverage with assertion-free tests.
+- **Claude review gate (SPEC-PLAT-03):** every PR gets a structured review. `scripts/review_gate.py` fails the required `claude-review` check on Critical/High findings.
 - **Quality gates (SPEC-PLAT-01):**
   - `ArchitectureTest`: every service, parameterized over `HexagonalRules.rows()` (domain free of frameworks; application ↛ adapters; adapters.in ↛ adapters.out; no ORM/Kafka; no field injection, `System.out` or JUL; controllers in `adapters.in.web` without SQL). It caught a real violation on its first run: an IAM controller using the JDBC adapter.
   - `*OpenApiContractIT`: every spec endpoint is documented; exports the contract.

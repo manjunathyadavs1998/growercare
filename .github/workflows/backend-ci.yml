@@ -48,6 +48,9 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write     # sticky coverage comment (SPEC-PLAT-03 R42); read-only on fork PRs
     defaults:
       run:
         working-directory: gc-backend
@@ -59,6 +62,8 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: needs.changes.outputs.backend == 'true'
+        with:
+          fetch-depth: 0       # SonarQube Cloud needs history for new-code detection and blame
 
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         if: needs.changes.outputs.backend == 'true'
@@ -74,6 +79,42 @@ jobs:
       - name: API contract drift (commit regenerated contracts with the API change)
         if: needs.changes.outputs.backend == 'true'
         run: git diff --exit-code -- contracts/
+
+      - name: Coverage gate — merged line coverage >= 80% (SPEC-PLAT-03 R41)
+        id: coverage
+        if: needs.changes.outputs.backend == 'true'
+        working-directory: .
+        run: |
+          set +e
+          python3 scripts/coverage_gate.py gc-backend/coverage/target/site/jacoco-aggregate/jacoco.xml             --min-line 80 --summary-file coverage.md
+          gate=$?
+          cat coverage.md >> "$GITHUB_STEP_SUMMARY"
+          exit $gate
+
+      - name: Coverage comment on the PR (SPEC-PLAT-03 R42)
+        if: always() && needs.changes.outputs.backend == 'true' && github.event_name == 'pull_request' && steps.coverage.outcome != 'skipped'
+        continue-on-error: true      # fork PRs have a read-only token
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          [ -f coverage.md ] || exit 0
+          existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- coverage-gate -->")) | .id' | head -1)
+          if [ -n "$existing" ]; then gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F body=@coverage.md --silent
+          else gh pr comment "$PR" --repo "$REPO" --body-file coverage.md; fi
+
+      - name: SonarQube Cloud analysis + quality gate (SPEC-PLAT-03 R43)
+        if: needs.changes.outputs.backend == 'true'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::notice title=SonarQube Cloud skipped::add the SONAR_TOKEN secret to enable it (SPEC-PLAT-03 D2)"
+            exit 0
+          fi
+          mvn -B -ntp org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
 
       - name: Upload test reports
         if: always() && needs.changes.outputs.backend == 'true'

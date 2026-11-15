@@ -28,9 +28,14 @@ You'll need JDK 21, Maven 3.9 and Docker Desktop (Testcontainers). See `CLAUDE.m
 ## 4. Required checks on `main`
 | Check | What it proves |
 |---|---|
-| `backend-ci / verify` | All tests (unit, Testcontainers, ArchUnit, OpenAPI) green; no API-contract drift |
-| `pr-policy / policy` | Title, spec reference, tests with code, branch name |
-| `codeql` (public repos only) | Static analysis and dependency review |
+| `backend-ci / verify` | All tests (unit, Testcontainers, ArchUnit, OpenAPI) green; no API-contract drift; **merged line coverage ≥ 80%** (sticky PR comment with per-module numbers); SonarQube Cloud quality gate (≥ 80% coverage on new code, no new bugs/vulnerabilities) once `SONAR_TOKEN` is set |
+| `pr-policy / policy` | Title, spec reference, tests with code, branch name; self-tests of all gate scripts |
+| `claude-review` | Claude Code reviews the diff against `CLAUDE.md`, the spec and the security checklist. It posts inline comments, a severity table and `review:*` labels. **Any Critical/High finding fails the check and blocks the merge.** Medium/Low are advisory |
+| `codeql` | Static security analysis and dependency review |
+
+**When `claude-review` blocks your PR:**
+- **Real issue:** fix it, push, and the review re-runs.
+- **False positive:** reply on the inline comment with the evidence and push a commit that makes the intent clear (a test row or comment). The check re-evaluates the new diff. Never weaken the gate.
 
 ## 5. Never
 - Push to `main` directly or force-push shared branches.

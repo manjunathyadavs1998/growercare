@@ -87,6 +87,11 @@ Java backend: `spec-driven-development` (load first for any feature), `java-back
 ## Repository and GitHub (SPEC-PLAT-02, `CONTRIBUTING.md`)
 - **Remote:** `github.com/manjunathyadavs1998/growercare` (**public**). The `gh` CLI is at `C:/Program Files/GitHub CLI/gh.exe`. Commits use the GitHub no-reply email (repo-local `git config user.email`).
 - **Never commit to or push `main` directly.** Branch `<type>/<name>`, use Conventional Commit messages, open a PR whose body contains `Spec: docs/specs/...` (and `Tests: n/a – …` only if no production code changed), then squash-merge when green.
-- **Required checks:** `backend-ci / verify` (all tests + contract drift) and `pr-policy / policy`. CodeQL runs only when the repo is public.
+- **Required checks:**
+  - `backend-ci / verify`: all tests, contract drift, **merged line coverage ≥ 80%** and the Sonar quality gate;
+  - `pr-policy / policy`;
+  - `claude-review`: blocks on Critical/High findings (SPEC-PLAT-03).
+
+  CodeQL also runs.
 - **Main protection:** the ruleset in `.github/rulesets/main.json` (applied by `scripts/apply-repo-settings.sh`) is **active with no bypass**. Nobody, including the owner, can push, force-push or delete `main`; changes are PRs only. The local hooks (`scripts/install-hooks.sh`) give the same feedback before you push.
 - **Actions** are pinned to commit SHAs; Dependabot updates them weekly.
