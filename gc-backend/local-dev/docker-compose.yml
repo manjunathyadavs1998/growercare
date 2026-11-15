@@ -37,7 +37,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:8.10-alpine
     container_name: gc-redis
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
