@@ -16,7 +16,8 @@ A global grower and channel service platform: growers, retailers and staff raise
 | `gc-backend/` | Java 21 · Spring Boot 4.1 · Maven · PostgreSQL 17 · Redis · Keycloak. Contains `identity-access-service`, `case-service` and shared libraries |
 | `gc-backend/contracts/` | Generated OpenAPI contracts (CI fails on drift) |
 | `.claude/` | Claude Code project skills and agents |
-| `.github/` | CI, PR policy, CodeQL, Dependabot, CODEOWNERS, templates, ruleset-as-code |
+| `.github/` | CI, PR policy, CodeQL, Claude review, Dependabot, CODEOWNERS, templates, ruleset-as-code |
+| `docs/ci-setup/` | **CI/CD setup runbook** (Markdown source + PDF): every step, command and lesson learned |
 
 ## Quick start
 ```bash

@@ -214,6 +214,18 @@ erDiagram
 
 ---
 
+## 5a. SLA and routing (SPEC-CASE-04, migrations common V4 / shard V4)
+| Table / column | Key | Notes |
+|---|---|---|
+| `ref.case_sla_policy` | (`country_code`, `case_type_code`) | SLA hours per country × type; absent row ⇒ `case_type.default_sla_hours`. Adverse-incident values are illustrative (validate per country) |
+| `ref.case_queue` | `queue_code` (alt: `queue_code, country_code`) | Team inboxes. A CHECK keeps the code prefix equal to the country |
+| `ref.routing_rule` | `rule_id` (alt: `country_code, priority`) | Null columns are wildcards. A composite FK keeps queue and territory inside the rule's country. The lowest priority number wins |
+| `<shard>.cases.queue_code` | FK (`queue_code`, `country_code`) → `ref.case_queue` | Set at creation by routing; index `(queue_code, case_id DESC)` |
+| `<shard>.cases.sla_started_at` | — | SLA window start: creation, or the latest reopen. NULL on pre-V4 rows ⇒ `created_at` |
+| `<shard>.case_timer` | (`case_id`, `timer_id`) | Partitioned by `case_id`. `kind` ∈ WARN_50/75/90, BREACH. `fired_at` and `cancelled_at` are mutually exclusive (CHECK). Partial index on `due_at` of pending timers drives the `SKIP LOCKED` poller |
+
+SLA state is **not stored** (it would drift). It is computed from `sla_started_at`, `sla_due_at` and `closed_at`, identically in Java (`SlaRules.state`) and in the list SQL.
+
 ## 6. Ready for Snowflake
 - **Every row carries what the warehouse needs:** `country_code`, `case_id` (time-ordered, decodable), `created_at`/`updated_at`, `version`. Debezium CDC rows are therefore self-describing (doc 03).
 - **Facts aren't hidden in JSON,** so Snowflake RAW → CURATED needs no JSON parsing for business fields.
