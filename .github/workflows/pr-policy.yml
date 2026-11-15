@@ -25,6 +25,11 @@ jobs:
       - name: Self-test the policy (SPEC-PLAT-02 examples E30–E40)
         run: bash scripts/pr-policy-selftest.sh
 
+      - name: Self-test the quality gates (SPEC-PLAT-03 examples E50–E58)
+        run: |
+          python3 scripts/review_gate.py --selftest
+          python3 scripts/coverage_gate.py --selftest
+
       - name: Check this pull request
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
