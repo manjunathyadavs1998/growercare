@@ -1,6 +1,7 @@
 # SPEC-PLAT-03 R44–R49: Claude Code reviews every PR; a deterministic gate turns its structured findings into
 # a severity summary, labels and the required "claude-review" check (fails on any Critical/High).
-# Auth: Claude GitHub App secret CLAUDE_CODE_OAUTH_TOKEN (created by `/install-github-app`).
+# Auth: secret CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, any Claude subscription account) — or switch the
+# input to anthropic_api_key with an ANTHROPIC_API_KEY secret. No Claude GitHub App needed: comments use github.token.
 # Security: runs on `pull_request` (never pull_request_target); fork PRs get no secrets and fail closed (D5).
 name: claude-review
 
@@ -41,6 +42,7 @@ jobs:
         uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc # v1.0.276
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}     # workflow token (pull-requests: write); the Claude GitHub App is optional
           track_progress: false
           prompt: |
             REPO: ${{ github.repository }}
