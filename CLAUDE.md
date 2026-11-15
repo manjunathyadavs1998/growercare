@@ -66,7 +66,7 @@ Java backend: `spec-driven-development` (load first for any feature), `java-back
   cp .env.example .env
   docker compose up -d --wait
   ```
-  The Docker CLI is at `%LOCALAPPDATA%/Programs/DockerDesktop/resources/bin`.
+  The Docker CLI is at `%LOCALAPPDATA%/Programs/DockerDesktop/resources/bin` (Docker Desktop doesn't add it to PATH).
 - **Build and test:** `cd gc-backend && mvn -B verify`. Docker must be running for the `*IT` tests.
 - **Run a service:** `mvn -pl services/<svc> -am spring-boot:run -Dspring-boot.run.profiles=local`. The `local` profile applies the dev seed (Keycloak users ⇄ IAM grants).
 - **Keycloak:**
@@ -85,8 +85,8 @@ Java backend: `spec-driven-development` (load first for any feature), `java-back
 - **API docs:** Swagger UI at http://localhost:8081/swagger-ui/index.html and http://localhost:8082/swagger-ui/index.html (local profile only). Committed contracts are in `gc-backend/contracts/`.
 
 ## Repository and GitHub (SPEC-PLAT-02, `CONTRIBUTING.md`)
-- **Remote:** `github.com/manjunathyadavs1998/growercare` (private). The `gh` CLI is at `C:/Program Files/GitHub CLI/gh.exe`.
+- **Remote:** `github.com/manjunathyadavs1998/growercare` (**public**). The `gh` CLI is at `C:/Program Files/GitHub CLI/gh.exe`. Commits use the GitHub no-reply email (repo-local `git config user.email`).
 - **Never commit to or push `main` directly.** Branch `<type>/<name>`, use Conventional Commit messages, open a PR whose body contains `Spec: docs/specs/...` (and `Tests: n/a – …` only if no production code changed), then squash-merge when green.
 - **Required checks:** `backend-ci / verify` (all tests + contract drift) and `pr-policy / policy`. CodeQL runs only when the repo is public.
-- **Main protection:** the ruleset in `.github/rulesets/main.json` is applied by `scripts/apply-repo-settings.sh`. It is **not active on GitHub Free for private repos**; until then the hooks (`scripts/install-hooks.sh`) and CI enforce it client-side.
+- **Main protection:** the ruleset in `.github/rulesets/main.json` (applied by `scripts/apply-repo-settings.sh`) is **active with no bypass**. Nobody, including the owner, can push, force-push or delete `main`; changes are PRs only. The local hooks (`scripts/install-hooks.sh`) give the same feedback before you push.
 - **Actions** are pinned to commit SHAs; Dependabot updates them weekly.

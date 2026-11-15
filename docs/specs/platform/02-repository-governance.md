@@ -1,7 +1,7 @@
 # SPEC-PLAT-02: Repository governance (GitHub)
 - **Requirements:** NFR maintainability and security; conventions 9–12 in `CLAUDE.md` (tests before claims, ADR changes, spec-driven, parameterized)
-- **Status:** Implemented. R1 (server-side enforcement) is pending a plan change, see D1
-- **Repository:** `manjunathyadavs1998/growercare` (private)
+- **Status:** Implemented
+- **Repository:** `manjunathyadavs1998/growercare`, **public** since 2026-11-15, with `main` locked: PR only, no bypass for anyone (D6)
 
 ## 0. Decisions
 | # | Decision | Why |
@@ -10,6 +10,8 @@
 | D2 | **Squash merge only**; the PR title becomes the commit message (Conventional Commits); head branches are deleted after merge; auto-merge allowed | Linear, readable history; one commit per spec change |
 | D3 | Required approvals = **0** while there is a single maintainer (GitHub doesn't let authors approve their own PRs). Raise to 1 + code-owner review when a second maintainer joins | Avoid locking the only maintainer out |
 | D4 | CodeQL and dependency review run **only when the repository is public** (they need GitHub Advanced Security on private repos). Dependabot alerts and security updates are on for all plans | Use what the plan offers; no permanently red checks |
+| D6 | **Public repository, `main` writable by nobody directly.** The ruleset has **no bypass actors** (not even the owner or admins), so every change is a squash-merged PR with green checks. Outsiders have no write access at all: they fork, and their PR workflows wait for maintainer approval | The owner asked to block anyone from pushing code changes |
+| D7 | Before going public, history was rewritten once so commits carry the GitHub no-reply address instead of a personal email, and a local user path was removed. This was the last force-push; the ruleset forbids it from now on | Keep personal data out of public history |
 | D5 | Third-party actions are **pinned to full commit SHAs** (with the version in a comment) and updated by Dependabot | Supply-chain safety (a moved tag cannot inject code) |
 
 ## 1. Rules
@@ -25,7 +27,10 @@
 | PLAT-R27 | any file path | changed | GitHub requests review from the owner in `.github/CODEOWNERS` |
 | PLAT-R28 | weekly | dependencies (Maven, GitHub Actions, Docker Compose images) | Dependabot opens grouped PRs, labelled, with Conventional-Commit titles |
 | PLAT-R29 | local clone | `scripts/install-hooks.sh` | `commit-msg` enforces Conventional Commits; `pre-push` blocks pushes to `main` |
-| PLAT-R30 | a vulnerability is suspected | — | reported privately as described in `SECURITY.md`, never in a public issue |
+| PLAT-R30 | a vulnerability is suspected | — | reported privately as described in `SECURITY.md` (private vulnerability reporting enabled), never in a public issue |
+| PLAT-R31 | a pull request from a fork (any outside contributor) | its workflows would run | they wait for a maintainer to approve the run (`all_external_contributors`) |
+| PLAT-R32 | any workflow | uses `GITHUB_TOKEN` | the default token is **read-only** and cannot approve PRs; jobs ask for more scopes explicitly (e.g. CodeQL `security-events: write`) |
+| PLAT-R33 | a push contains a secret | push | rejected by **secret scanning push protection**; detected secrets raise alerts |
 
 ## 2. Examples (`pr-policy` checks run as table-driven cases in `scripts/pr-policy.sh`, self-tested by `scripts/pr-policy-selftest.sh`)
 | Example | Input | Expected |
@@ -50,6 +55,7 @@
 | R27 | `.github/CODEOWNERS` |
 | R28 | `.github/dependabot.yml` |
 | R29 | `.githooks/`, `scripts/install-hooks.sh` |
-| R30 | `SECURITY.md` |
+| R30 | `SECURITY.md`; private vulnerability reporting enabled by `scripts/apply-repo-settings.sh` |
+| R31–R33 | `scripts/apply-repo-settings.sh` (fork-PR approval, read-only token, secret scanning + push protection) |
 | D2 | repo settings applied by `scripts/apply-repo-settings.sh` |
 | D4 | `.github/workflows/codeql.yml` (`if: !github.event.repository.private`) |

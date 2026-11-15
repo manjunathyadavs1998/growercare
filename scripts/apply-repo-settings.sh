@@ -20,6 +20,18 @@ echo "== Dependabot alerts + security updates (R28)"
 "$GH" api -X PUT "repos/$REPO/vulnerability-alerts" --silent && echo "   alerts on"
 "$GH" api -X PUT "repos/$REPO/automated-security-fixes" --silent && echo "   security updates on"
 
+echo "== Actions hardening (R31/R32): read-only GITHUB_TOKEN, fork PRs need approval"
+"$GH" api -X PUT "repos/$REPO/actions/permissions/workflow" --silent   -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false && echo "   token read-only"
+"$GH" api -X PUT "repos/$REPO/actions/permissions/fork-pr-contributor-approval" --silent   -f approval_policy=all_external_contributors && echo "   fork PRs need approval" || echo "   (fork approval policy not available on this plan)"
+
+if [[ "$("$GH" api "repos/$REPO" --jq .private)" == "false" ]]; then
+  echo "== Public-repo security (R30/R33): secret scanning + push protection, private vulnerability reporting"
+  "$GH" api -X PATCH "repos/$REPO" --silent --input - <<'JSON' && echo "   secret scanning + push protection on"
+{"security_and_analysis": {"secret_scanning": {"status": "enabled"}, "secret_scanning_push_protection": {"status": "enabled"}}}
+JSON
+  "$GH" api -X PUT "repos/$REPO/private-vulnerability-reporting" --silent && echo "   private vulnerability reporting on"
+fi
+
 echo "== Labels used by Dependabot and templates"
 for label in "dependencies:0366d6" "backend:5319e7" "ci:fbca04" "local-dev:c5def5" "feature:a2eeef" "needs-spec:d93f0b" "bug:d73a4a"; do
   "$GH" label create "${label%%:*}" --color "${label##*:}" --repo "$REPO" --force >/dev/null && echo "   ${label%%:*}"
