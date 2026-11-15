@@ -83,3 +83,10 @@ Java backend: `spec-driven-development` (load first for any feature), `java-back
 
   The first case-service start migrates all 128 shards (~2 min).
 - **API docs:** Swagger UI at http://localhost:8081/swagger-ui/index.html and http://localhost:8082/swagger-ui/index.html (local profile only). Committed contracts are in `gc-backend/contracts/`.
+
+## Repository and GitHub (SPEC-PLAT-02, `CONTRIBUTING.md`)
+- **Remote:** `github.com/manjunathyadavs1998/growercare` (private). The `gh` CLI is at `C:/Program Files/GitHub CLI/gh.exe`.
+- **Never commit to or push `main` directly.** Branch `<type>/<name>`, use Conventional Commit messages, open a PR whose body contains `Spec: docs/specs/...` (and `Tests: n/a – …` only if no production code changed), then squash-merge when green.
+- **Required checks:** `backend-ci / verify` (all tests + contract drift) and `pr-policy / policy`. CodeQL runs only when the repo is public.
+- **Main protection:** the ruleset in `.github/rulesets/main.json` is applied by `scripts/apply-repo-settings.sh`. It is **not active on GitHub Free for private repos**; until then the hooks (`scripts/install-hooks.sh`) and CI enforce it client-side.
+- **Actions** are pinned to commit SHAs; Dependabot updates them weekly.
