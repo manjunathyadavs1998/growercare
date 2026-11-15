@@ -13,7 +13,7 @@
 |---|---|---|
 | `backend-ci / verify` | `mvn verify`: unit + Testcontainers integration + ArchUnit + OpenAPI contract tests (336 tests); API contract drift check; **merged line coverage ≥ 80%** (currently ~91%); SonarQube Cloud (optional, off for now) | Yes (required) |
 | `pr-policy / policy` | Conventional-Commit PR title, `Spec:` line in the PR body, tests with production code, branch name; self-tests of every gate script | Yes (required) |
-| `claude-review` | Claude Code reviews the diff with inline comments; a deterministic gate posts a severity table and `review:*` labels and **fails on Critical/High** | Yes (required, once the ruleset update in §10.6 is applied) |
+| `claude-review` | Claude Code reviews the diff with inline comments; a deterministic gate posts a severity table and `review:*` labels and **fails on Critical/High** | Yes (required) |
 | `codeql` | CodeQL (Java, Actions) + dependency review (public repos) | Advisory |
 | Ruleset `main-protection` | No direct push, no force-push, no deletion of `main`; PR + green required checks + resolved conversations + squash merge; **no bypass, not even the owner** | Enforced by GitHub |
 | Local hooks | `commit-msg` (Conventional Commits), `pre-push` (no pushes to `main`) | Client side |
@@ -385,6 +385,6 @@ pip install markdown-it-py && python docs/ci-setup/build_pdf.py
 | Repository public, history scrubbed, `main` locked (no bypass) | Done, verified (GH013 on direct push) |
 | backend-ci, pr-policy, CodeQL | Live, green |
 | 80% coverage gate | Live (~91%) |
-| Claude review workflow + `CLAUDE_CODE_OAUTH_TOKEN` secret | Secret set; the workflow runs once PR #2 is merged into `main` (§10.4) |
-| `claude-review` as a required check | After PR #2 merges: `scripts/apply-repo-settings.sh` |
+| Claude review workflow + `CLAUDE_CODE_OAUTH_TOKEN` secret | Live since PR #2 merged. First end-to-end run on PR #7: 1 Low finding, gate passed, label `review:low` |
+| `claude-review` as a required check | Done: the ruleset requires `verify`, `policy`, `claude-review` (no bypass) |
 | SonarQube Cloud | Deferred by decision; ready to enable (§10.7) |
