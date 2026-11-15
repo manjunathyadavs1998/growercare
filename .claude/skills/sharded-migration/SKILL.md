@@ -51,7 +51,8 @@ Never hard-code a schema name; `ShardMigrationConventionsTest` fails the build i
 3. **Partitions:**
    - Weekly partitions (Monday 00:00 UTC, bounds `ref.id_floor(week)`) are created by `${shard_schema}.ensure_week_partitions(weeks_back, weeks_ahead)`.
    - That function is `SECURITY DEFINER`, so a daily job may call it as the app role. Migration V3 covers -1…+8 weeks.
-   - A new case-keyed child table must be added to the function's `parents` array, partitioned `BY RANGE (case_id)`, with a `_default` partition.
+   - **A new case-keyed child table must be added to the function's `parents` array** (`CREATE OR REPLACE FUNCTION` in the same migration, as in shard V4 for `case_timer`), partitioned `BY RANGE (case_id)`, with a `_default` partition. Then call `ensure_week_partitions(1, 8)` in that migration so the existing weeks get the new table too.
+   - Changing a CHECK on a partitioned table: `DROP CONSTRAINT` + `ADD CONSTRAINT` on the parent propagates to every partition (shard V4 `case_activity_type`).
    - `*_default` partitions must stay empty: a non-empty default blocks creating the matching week.
 4. **ID functions:** changing `next_id()` / `next_case_no()` requires an ADR. Bit layout and constants are frozen.
 5. **CDC impact:** any column add/rename must also be added to `gc-contracts` (Avro, BACKWARD compatible) and to Snowflake CURATED via `gc-data-platform` *before* the contract step drops anything.

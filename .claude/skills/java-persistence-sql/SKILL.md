@@ -91,7 +91,9 @@ Reference implementation: `identity-access-service/.../JdbcAccessRepository` (na
 | Pagination | **Keyset** only: `WHERE (case_id) < :cursor ORDER BY case_id DESC LIMIT :limit + 1`. `case_id` is time-ordered and unique, so it needs no tiebreaker. Cursor = opaque base64 of the last ID. Max page size 100 |
 | Scope filter (ABAC) | `ScopeFilter` (gc-security) gives a fixed SQL fragment plus params, e.g. `AND (c.territory_id = ANY(:territories) OR c.grower_id = :ownGrower)`. Arrays are bound as parameters (`= ANY(:ids)`) |
 | Hot window only | Lists are bounded by `case_id >= IdCodec.floor(now - window)` so partition pruning applies |
-| Background claim | `SELECT … FOR UPDATE SKIP LOCKED LIMIT n` |
+| Background claim | `SELECT … FOR UPDATE OF t SKIP LOCKED LIMIT n`, then `UPDATE … WHERE fired_at IS NULL` (row count 1 = we own it) in the same transaction, as an exactly-once guard. Reference: `SlaTimerPoller` + `maintenance.claimDueTimers` |
+| One runner per shard across replicas | `SELECT pg_try_advisory_xact_lock(hashtext('gc.job.<job>.<shard>'))` at the start of the shard's transaction; false ⇒ skip that shard (`MaintenanceJobs.perShard`) |
+| Computed states in SQL and Java | Keep one rule set in both places (e.g. SLA state: `SlaRules.state` ≡ the CASE expression in `case.list`) and test both against the same example rows |
 | Optional list filters | Keep the statement static: `(CAST(:status AS varchar) IS NULL OR c.status_code = CAST(:status AS varchar))`. The typed CAST lets Postgres infer null parameters |
 | Scope in list SQL | A `{scope}` token in the named statement is replaced by the repository with `ScopeFilter` SQL built from `CaseAccessScope.columns(shard)` (code constants). The application passes `(principal, permission)` to the port and never builds SQL (reference: `JdbcCaseRepository.list`) |
 | Cross-shard lists (SPEC-CASE-02 D1) | `CaseQueries`: compute target shards from the grants (OWN → own growers' shards; ORG/geo/ASSIGNED → all shards of the covered countries), query each with `limit+1` on virtual threads (semaphore 16), merge by `case_id DESC`, cut to `limit`, cursor = last id |
