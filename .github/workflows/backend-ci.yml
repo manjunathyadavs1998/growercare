@@ -1,13 +1,12 @@
 # SPEC-PLAT-01 R11: build + all tests (unit, Testcontainers integration, ArchUnit, OpenAPI contract) for gc-backend,
 # then fail on API contract drift (the build regenerates gc-backend/contracts/*.openapi.json).
+# Required status check for main (SPEC-PLAT-02 R21): "backend-ci / verify".
 name: backend-ci
 
 on:
   push:
     branches: [main]
-    paths: ["gc-backend/**", ".github/workflows/backend-ci.yml"]
   pull_request:
-    paths: ["gc-backend/**", ".github/workflows/backend-ci.yml"]
   workflow_dispatch:
 
 permissions:
@@ -18,30 +17,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    # Runs on every PR so the required check always reports; heavy work only when gc-backend changed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.diff.outputs.backend }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then echo "backend=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          base="${BASE_SHA:-$BEFORE}"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$base" 2>/dev/null; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$base" HEAD | grep -qE '^(gc-backend/|\.github/workflows/backend-ci\.yml)'; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
   verify:
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
       run:
         working-directory: gc-backend
     steps:
-      - uses: actions/checkout@v4
+      - name: Skip (no gc-backend changes)
+        if: needs.changes.outputs.backend != 'true'
+        working-directory: .
+        run: echo "No gc-backend changes; nothing to build."
 
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.backend == 'true'
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        if: needs.changes.outputs.backend == 'true'
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
 
       - name: Build and test (Testcontainers uses the runner's Docker)
+        if: needs.changes.outputs.backend == 'true'
         run: mvn -B -ntp verify
 
       - name: API contract drift (commit regenerated contracts with the API change)
+        if: needs.changes.outputs.backend == 'true'
         run: git diff --exit-code -- contracts/
 
       - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && needs.changes.outputs.backend == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-reports
           path: |
