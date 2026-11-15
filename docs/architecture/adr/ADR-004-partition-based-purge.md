@@ -1,0 +1,12 @@
+# ADR-004: Purge by weekly partition drop, with carryover for open cases
+- **Status:** Accepted · 2026-11-15
+- **Context:** Row-level purging would mean ~150M deletes per country per day: CDC delete events, WAL and vacuum pressure.
+- **Decision:**
+  - `cases`, `case_comments`, `case_activity` are range-partitioned by `case_id` (= creation week).
+  - After 13 weeks, still-open or recently closed cases are moved to carryover tables.
+  - The partition is verified against Snowflake (count + canonical hash digest), then detached and dropped.
+  - Carryover rows use the row-level purge-marker protocol.
+- **Consequences:**
+  - Plus: near-zero purge cost; no delete storm in CDC.
+  - Minus: carryover tables and routing flag; verification must be exact.
+- **Alternatives:** row deletes (too heavy), partition by `closed_at` (rows would move partitions on close).

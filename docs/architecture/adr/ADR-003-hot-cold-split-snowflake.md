@@ -1,0 +1,12 @@
+# ADR-003: Hot/cold split — Postgres for 90 days after closure, Snowflake beyond
+- **Status:** Accepted · 2026-11-15
+- **Context:** Keeping all history in OLTP is impossible at this volume. Users and analysts both need history. The sink must be provably accurate before data leaves Postgres.
+- **Decision:**
+  - Debezium → Kafka → Snowflake (RAW → CURATED via LSN-ordered idempotent `MERGE` → SERVING).
+  - Queries with any part older than the hot window go entirely to Snowflake via `archive-query-api`.
+  - RAW retention 1 year.
+  - Details: `docs/syngenta/03_DATA_PLATFORM_DESIGN.md`.
+- **Consequences:**
+  - Plus: bounded OLTP size; one analytics source.
+  - Minus: ≤ 10 min freshness for archive views; Snowflake cost; pipeline is tier-1 infrastructure.
+- **Alternatives:** Postgres read replicas + table partitions forever (storage and cost), Aurora + S3 export (no curated query layer).

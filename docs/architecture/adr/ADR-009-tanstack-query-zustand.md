@@ -1,0 +1,11 @@
+# ADR-009: TanStack Query for server state, Zustand for UI state
+- **Status:** Accepted · 2026-11-15
+- **Context:** Frontends are dominated by server data (cases, comments, dashboards) with caching, pagination, optimistic updates and realtime merges. UI state (filters, preferences, offline queue status) is small and local.
+- **Decision:**
+  - TanStack Query with orval-generated hooks from OpenAPI.
+  - Zustand stores per feature for UI state.
+  - No Redux.
+- **Consequences:**
+  - Plus: less boilerplate; types match contracts.
+  - Minus: the team must follow the rule "server data never in Zustand" (lint rule + review checklist).
+- **Alternatives:** Redux Toolkit + RTK Query (heavier, duplicates the TanStack Query role), Apollo/GraphQL (no GraphQL backend).

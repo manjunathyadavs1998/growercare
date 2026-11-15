@@ -1,0 +1,11 @@
+# ADR-010: No service mesh initially
+- **Status:** Accepted · 2026-11-15
+- **Context:** Service-to-service traffic must be authenticated and restricted. A mesh (Istio/Linkerd) gives mTLS and traffic policies but adds operational and latency cost per cell.
+- **Decision:**
+  - Kubernetes NetworkPolicies (default deny) + OAuth2 client-credentials JWTs between services + TLS at the ALB.
+  - Resilience in-process via Resilience4j.
+  - Re-evaluate (e.g., Istio ambient mode) when zero-trust mTLS becomes a compliance requirement.
+- **Consequences:**
+  - Plus: simpler clusters.
+  - Minus: no transparent mTLS inside the VPC; retries/timeouts configured in code.
+- **Alternatives:** Istio sidecar/ambient, Linkerd, AWS VPC Lattice.

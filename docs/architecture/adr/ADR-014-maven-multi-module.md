@@ -1,0 +1,24 @@
+# ADR-014: Maven multi-module build for gc-backend
+- **Status:** Accepted · 2026-11-15
+- **Supersedes:** the build tool in ADR-008 (`gc-backend` "Gradle multi-module"). The six-repository layout of ADR-008 is unchanged.
+- **Context:**
+  - Maven 3.9 is already the team's standard toolchain; Gradle is not installed.
+  - The backend needs:
+    - one dependency BOM;
+    - a ban on certain dependencies (ADR-013: no ORM);
+    - separate unit and integration test phases (Testcontainers);
+    - per-module coverage.
+- **Decision:**
+  - `gc-backend` is a Maven multi-module project:
+    - parent POM `com.growercare:gc-backend`, inheriting `spring-boot-starter-parent` (version pinned);
+    - modules `libs/*` and `services/*`.
+  - Internal libraries and third-party versions not covered by the Boot BOM are managed in `<dependencyManagement>`.
+  - Plugins:
+    - **Enforcer:** Java ≥ 21, Maven ≥ 3.9, banned ORM dependencies;
+    - **Surefire** for `*Test` unit tests and **Failsafe** for `*IT` integration tests;
+    - **JaCoCo** for coverage.
+  - CI builds affected modules with `mvn -pl <module> -am verify`.
+- **Consequences:**
+  - Plus: declarative, widely known, no wrapper download on locked-down machines, one-command `mvn verify`.
+  - Minus: less flexible than Gradle for custom build logic; incremental builds are coarser (mitigated by `-pl/-am` in CI).
+- **Alternatives:** Gradle Kotlin DSL with convention plugins (the original ADR-008 choice) is faster incrementally, but adds a toolchain the team doesn't use today.

@@ -1,0 +1,12 @@
+# ADR-011: Redis is a cache and rate limiter, never a system of record
+- **Status:** Accepted · 2026-11-15
+- **Context:** Read-heavy reference data at 100K+ req/s; abuse controls; risk of teams putting critical state in Redis.
+- **Decision:**
+  - Allowed uses and key patterns are listed in `03_TECH_STACK.md §2`.
+  - No case/comment/money/saga state in Redis.
+  - Separate clusters for cache and for rate-limit/session.
+  - Stampede protection is mandatory.
+- **Consequences:**
+  - Plus: a Redis loss degrades performance, not correctness.
+  - Minus: some features need DB round-trips that Redis could have shortcut.
+- **Alternatives:** Redis as primary store for counters/feeds (durability risk on failover).

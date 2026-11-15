@@ -1,0 +1,11 @@
+# ADR-007: GitHub Actions for CI, Argo CD (GitOps) + Argo Rollouts for CD
+- **Status:** Accepted · 2026-11-15
+- **Context:** Many cells and services; production changes must be auditable and reversible; cell-by-cell rollout waves.
+- **Decision:**
+  - GitHub Actions builds, tests, signs and pushes images (OIDC to AWS), then opens a PR in `gc-deploy`.
+  - Argo CD syncs clusters from `gc-deploy`.
+  - Argo Rollouts runs canaries with metric analysis, in waves: staging → canary cell → all cells.
+- **Consequences:**
+  - Plus: Git is the source of truth for what runs; easy rollback (revert); no CI credentials into prod clusters.
+  - Minus: one more system (Argo) to operate.
+- **Alternatives:** GitHub Actions `helm upgrade` per cluster (push-based, credentials in CI, weaker drift detection), AWS CodePipeline.

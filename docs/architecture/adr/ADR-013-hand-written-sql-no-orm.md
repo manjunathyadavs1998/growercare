@@ -1,0 +1,37 @@
+# ADR-013: Hand-written SQL via JdbcClient, no ORM
+- **Status:** Accepted · 2026-11-15
+- **Supersedes:**
+  - the persistence line of `03_TECH_STACK.md` ("Spring Data JPA with Hibernate schema-based multi-tenancy");
+  - the Hibernate tenant resolver in `04_REPOSITORIES.md` / `service-scaffold`.
+- **Context:**
+  - Data is spread over 64 schemas per country, and every query must name its shard schema explicitly.
+  - Hot paths need Postgres features that ORMs hide or generate poorly:
+    - keyset pagination on `case_id`;
+    - partial indexes;
+    - `RETURNING`;
+    - `ON CONFLICT` for idempotency;
+    - composite foreign keys;
+    - `SKIP LOCKED` timers.
+  - The archive read side will run on Snowflake, a different dialect behind the same ports.
+  - The team wants every query reviewed as SQL.
+- **Decision:**
+  - No JPA or Hibernate in any service. The parent POM's enforcer bans `org.hibernate.orm:*` and `spring-boot-starter-data-jpa`.
+  - Persistence adapters use **Spring `JdbcClient`** with **named SQL statements** in resource files (`sql/<dialect>/<aggregate>.sql`, `-- name: <id>` blocks), loaded and validated at startup.
+  - Rows are mapped to Java records by explicit `RowMapper`s.
+  - Shard tables are qualified with the schema from `ShardRouter`. That schema is validated (`^[a-z]{2}_s\d{2}$`) and never comes from input; values are always bound parameters.
+  - Transactions are owned by application services (`@Transactional` or `TransactionTemplate`).
+  - Skill: `java-persistence-sql`.
+- **Consequences:**
+  - Plus:
+    - predictable SQL and plans, reviewable in PRs;
+    - no lazy-loading or N+1 surprises;
+    - trivial shard routing;
+    - the Snowflake adapter is "same port, different SQL file".
+  - Minus:
+    - mapping code is written by hand (records keep it small);
+    - no automatic dirty checking: every update is explicit, with an optimistic-lock `WHERE version = ?`;
+    - schema/SQL drift is caught by integration tests (Testcontainers), not at compile time.
+- **Alternatives:**
+  - JPA with `@NamedNativeQuery`: keeps the session and proxy semantics, and per-shard tenancy still needs Hibernate multi-tenancy;
+  - jOOQ: type-safe, but codegen across 128+ identical schemas and a commercial licence for some dialects;
+  - MyBatis: XML mappers, a weaker fit with records.

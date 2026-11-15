@@ -1,0 +1,14 @@
+# ADR-012: Kafka topic, keying and partitioning conventions
+- **Status:** Accepted · 2026-11-15
+- **Context:** Per-aggregate ordering is required (case events, comments). Adding partitions later remaps keys. The volume target is 1B users.
+- **Decision:**
+  - Key = aggregate ID.
+  - Partition counts sized for Stage C upfront (case/comment topics 96–192 per large cell).
+  - Avro with BACKWARD compatibility.
+  - `acks=all`, RF=3, `min.insync.replicas=2`.
+  - Idempotent consumers with inbox, retry topics, DLQ.
+  - Naming per `03_TECH_STACK.md §3`.
+- **Consequences:**
+  - Plus: ordering and replay safety; no forced repartitioning before Stage C.
+  - Minus: more partitions cost broker memory/file handles at Stage A (acceptable).
+- **Alternatives:** small partition counts grown later (key remapping breaks ordering during migration), Kinesis (lower per-shard throughput, different tooling).

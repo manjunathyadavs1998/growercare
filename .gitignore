@@ -1,0 +1,20 @@
+# Hiring assignment: kept local only (not for redistribution)
+take-home-assignment.pdf
+
+# Build output
+**/target/
+
+# Local secrets / runtime (also in gc-backend/.gitignore)
+gc-backend/local-dev/.env
+gc-backend/local-dev/logs/
+*.log
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings (personal); project skills/agents in .claude/ ARE committed
+.claude/settings.local.json
