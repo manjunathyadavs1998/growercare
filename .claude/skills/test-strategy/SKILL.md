@@ -72,6 +72,8 @@ description: Plan and write tests for GrowerCare following the project's test py
   - `TestJwts` (gc-test-support): RS256 tokens shaped like Keycloak's, with the dev-seed subjects as constants; `TestJwts.decoder(audiences)` gives a production-equivalent `JwtDecoder`. Register it as `@Primary` in a `@TestConfiguration`.
   - `DevSeedPrincipals` (case-service): the dev users as IAM resolves them; use it to stub `PrincipalResolver`.
   - `RedisTestContainer` (gc-test-support): password-protected Redis; `pause()`/`unpause()` simulate an outage.
+- **Stop locally running services before `mvn verify`** (`local-dev/run-services.sh stop`). On Windows they lock `target/*.jar`, and the build hangs silently with an empty log (seen 2026-11-15).
+- **Counting partitions:** `pg_inherits` also links index partitions. Count only `pg_class.relkind = 'r'`.
 - **`@Nested` gotcha (Spring Framework 7):** a nested static `@TestConfiguration` is **not** picked up for `@Nested` test classes. Always add `@Import(MyIT.Stubs.class)` on the outer class. Otherwise the real beans load silently; e.g. the Keycloak `JwtDecoder` rejected every test token with 401 (seen 2026-11-15).
 - **Spring Boot 4 test packages:** `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`, `org.springframework.test.context.bean.override.mockito.MockitoBean`.
 - **Isolation matrix pattern:** insert fixtures into real shards, then assert each user's visible set through **both** the SQL `ScopeFilter` and `PolicyEnforcer` (they must agree). See `CaseIsolationIT`.
