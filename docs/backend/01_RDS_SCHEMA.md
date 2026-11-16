@@ -22,6 +22,12 @@ Source of truth: Flyway migrations in `gc-backend/services/*/src/main/resources/
 
 Tests check these rights explicitly (`LeastPrivilege`, `auditTrailIsAppendOnlyForTheRuntimeRole`). If the service is compromised, it still cannot change the schema or rewrite history.
 
+**A third, cluster-wide role: `gc_cdc`** (SPEC-PLAT-04 D8; `local-dev/postgres/02-cdc-role.sh`, mirrored by `PostgresTestDatabase.CDC_ROLE`). This is Debezium's login. It has `REPLICATION` plus `CONNECT` on both databases. The migrations (placeholder `cdc_role`) grant it:
+- `SELECT` on the outbox tables;
+- write access to the single-row `cdc_heartbeat` table.
+
+It can read nothing else. `OutboxPublicationIT` / `IamOutboxPublicationIT` check that.
+
 ---
 
 ## 2. Normalisation approach
@@ -225,6 +231,15 @@ erDiagram
 | `<shard>.case_timer` | (`case_id`, `timer_id`) | Partitioned by `case_id`. `kind` ∈ WARN_50/75/90, BREACH. `fired_at` and `cancelled_at` are mutually exclusive (CHECK). Partial index on `due_at` of pending timers drives the `SKIP LOCKED` poller |
 
 SLA state is **not stored** (it would drift). It is computed from `sla_started_at`, `sla_due_at` and `closed_at`, identically in Java (`SlaRules.state`) and in the list SQL.
+
+## 5b. Event publishing and inbox (SPEC-PLAT-04, migrations IAM V5 / case common V5 / shard V5)
+| Object | Key | Notes |
+|---|---|---|
+| publication `gc_outbox` (gc_iam) | — | `iam.outbox` + `iam.cdc_heartbeat`, `publish = 'insert, update'` (housekeeping deletes are never streamed) |
+| publication `gc_outbox` (gc_case) | — | `msg.cdc_heartbeat` + every shard's `outbox`, which shard V5 adds with `ALTER PUBLICATION … ADD TABLE`. Debezium runs with `publication.autocreate.mode=disabled`, so the publication can never become `FOR ALL TABLES` (PII) |
+| `iam.cdc_heartbeat`, `msg.cdc_heartbeat` | `id` (= 1, CHECK) | Upserted by Debezium every 10 s (`heartbeat.action.query`). The replication slot advances even without events, so idle outbox traffic never retains WAL. The app role has no rights on it |
+| `msg.inbox` | (`consumer_group`, `event_id`) | Idempotent consumers: the row is written in the side effect's transaction and a duplicate is skipped. Index on `processed_at`; 7-day retention job |
+| `<shard>.outbox` retention | — | Daily job deletes rows older than 3 days. Debezium has already streamed them from the WAL |
 
 ## 6. Ready for Snowflake
 - **Every row carries what the warehouse needs:** `country_code`, `case_id` (time-ordered, decodable), `created_at`/`updated_at`, `version`. Debezium CDC rows are therefore self-describing (doc 03).

@@ -1,0 +1,19 @@
+# ADR-015: JSON event payloads with JSON Schema contracts until the AWS stage
+- **Status:** Accepted · 2026-11-16
+- **Supersedes:** only the "Avro with BACKWARD compatibility" bullet of ADR-012. Keys, partitioning, acks, inbox, retries and DLQ in ADR-012 are unchanged.
+- **Context:**
+  - SPEC-PLAT-04 makes event publishing real: transactional outbox → Debezium Outbox Event Router → Kafka.
+  - The outbox stores a generic JSON envelope (`{eventId, eventType, occurredAt, data}`) in a `jsonb` column. Avro would need a typed record per event and a schema registry container in the local stack, which is already memory-constrained (Postgres, Redis, Keycloak, Kafka, Connect).
+  - There is one consumer so far (case-service cache eviction), and both sides are in this repository.
+- **Decision:**
+  - Event values are **JSON** (Kafka Connect `JsonConverter`, schemas disabled). Keys are strings (the aggregate id).
+  - Every event type has a **JSON Schema (2020-12)** in `gc-backend/contracts/events/<eventType>.schema.json`.
+    - `data` has `additionalProperties: false`, so adding a field (and any PII) is a deliberate contract change.
+    - `*EventContractIT` tests run the real use cases and validate every outbox row against its schema.
+  - The compatibility rules are the same as ADR-012: BACKWARD only (add optional fields; never remove, rename or retype).
+  - Topics are per aggregate, `<domain>.<aggregate>.events`, to keep per-aggregate ordering (SPEC-PLAT-04 D3).
+- **Consequences:**
+  - Plus: no registry to run locally; contracts are readable and reviewed in pull requests; nothing to generate.
+  - Minus: there is no broker-side compatibility check, and JSON is larger than Avro on the wire. The contract tests cover producers in this repository only.
+- **Revisit when:** the first cell goes to AWS (MSK + Glue Schema Registry) or the first consumer outside this repository appears. At that point move to Avro (or JSON Schema in Glue) with registry-enforced compatibility. That change needs a new ADR.
+- **Alternatives:** Avro now with a local Apicurio/Confluent registry, which costs an extra container and typed records per event before any external consumer exists. Protobuf was not chosen because the team has no tooling for it.
