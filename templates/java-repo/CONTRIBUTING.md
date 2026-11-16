@@ -6,7 +6,7 @@ These rules are enforced by CI (`pr-policy`, `backend-ci`) and local git hooks. 
 ## 1. One-time setup
 ```bash
 scripts/install-hooks.sh          # commit-msg (Conventional Commits) + pre-push (no direct pushes to main)
-cd gc-backend/local-dev && cp .env.example .env && docker compose up -d --wait
+cp .env.example .env              # env-only config (ADR-017); fill in local values
 ```
 You'll need JDK 21, Maven 3.9 and Docker Desktop (Testcontainers). See `CLAUDE.md` → "Backend: local development".
 
@@ -15,7 +15,7 @@ You'll need JDK 21, Maven 3.9 and Docker Desktop (Testcontainers). See `CLAUDE.m
 2. **Branch:** `git switch -c <type>/<short-name>`, e.g. `feat/sla-timers`, `fix/stale-etag`.
 3. **Tests first:** write `@ParameterizedTest` rows from the spec examples, named by spec ID (`Arguments.argumentSet("CASE-E52 …", …)`), and see them fail.
 4. **Implement** until green. Follow the skills `java-backend-standards`, `java-persistence-sql`, `java-security-rbac` and `java-exception-handling`.
-5. **Verify:** run `cd gc-backend && mvn -B verify`. Run `local-dev/smoke.sh` if endpoints or security changed. Commit any regenerated `contracts/*.openapi.json`.
+5. **Verify:** run `mvn -B verify`. Run `smoke.sh` in growercare-local-platform if endpoints or security changed. Commit any regenerated `contracts/*.openapi.json`.
 6. **Pull request:** fill in the template. The title becomes the squash commit, and the body must name the spec (`Spec: docs/specs/…`).
 7. **Merge:** squash only, once all required checks are green and all conversations are resolved. The branch is deleted automatically.
 

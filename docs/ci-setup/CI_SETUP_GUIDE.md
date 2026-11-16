@@ -1,6 +1,9 @@
 # GrowerCare: CI/CD setup with GitHub Actions
 ### Runbook: what was set up, in which order, with the exact commands · v1.0 · 2026-11-15
 
+> **Paths after ADR-017 (2026-11-16).** This document was written for the `gc-backend` monorepo. The rules still hold; the paths moved:
+> `gc-backend/services/<svc>` → repository `growercare-<svc>` · `gc-backend/contracts/<svc>.openapi.json` → `contracts/` in that repository · `gc-backend/contracts/events/` → `gc-event-contracts` in growercare-platform-libs · `gc-backend/local-dev/` (incl. `smoke.sh`) → growercare-local-platform · `gc-backend/coverage` → per repository (services `target/site/jacoco-merged/jacoco.xml`, libs `coverage/target/site/jacoco-aggregate/jacoco.xml`) · workflow `backend-ci` → the kit's `ci.yml` (check `verify`). See SPEC-PLAT-06.
+
 > **Purpose:** a reference for maintaining or rebuilding the repository's CI, quality gates and branch protection.
 > **Specs:** `docs/specs/platform/01-quality-gates-and-smoke.md` (SPEC-PLAT-01), `02-repository-governance.md` (SPEC-PLAT-02), `03-code-quality-and-ai-review.md` (SPEC-PLAT-03).
 > **Repository:** `github.com/manjunathyadavs1998/growercare` (public; `main` locked: PR only, no bypass).

@@ -4,7 +4,8 @@
 #
 #   scripts/apply-java-repo-kit.sh <target-dir> lib|service
 #
-# Re-run it to bring a repository back in sync with the kit (it overwrites kit-owned files only).
+# Re-run it to bring a repository back in sync with the kit (it overwrites kit-owned files only;
+# .gitignore is merged so repository-specific entries are kept).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 KIT=templates/java-repo
@@ -21,7 +22,14 @@ esac
 # Governance files (kit-owned)
 (cd "$KIT" && find . -type f ! -name "$SKIP") | while read -r file; do
   mkdir -p "$TARGET/$(dirname "$file")"
-  cp "$KIT/$file" "$TARGET/$file"
+  if [[ "$file" == ./.gitignore && -f "$TARGET/.gitignore" ]]; then
+    # Merge, never overwrite: the repository's own ignores (e.g. services/*.env) must survive a re-apply.
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      grep -qxF -- "$line" "$TARGET/.gitignore" || printf '%s\n' "$line" >> "$TARGET/.gitignore"
+    done < "$KIT/$file"
+  else
+    cp "$KIT/$file" "$TARGET/$file"
+  fi
 done
 sed -i "s#__COVERAGE_XML__#${COVERAGE_XML}#" "$TARGET/.github/workflows/ci.yml"
 chmod +x "$TARGET"/scripts/*.sh "$TARGET"/.githooks/* 2>/dev/null || true
