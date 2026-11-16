@@ -290,16 +290,13 @@ cls
 | Medium | Robustness/maintainability (missing parameterized spec rows, convention breaks, N+1) | Flag |
 | Low | Style, naming, docs | Flag |
 
-### 10.4 Important limitation: the review workflow can't review itself
-The Claude action refuses to run when the PR's copy of its workflow differs from `main`'s:
-*"Workflow validation failed. The workflow file must exist and have identical content to the version on the repository's default branch."*
+### 10.4 Editing the review workflow, and bot PRs
+**Editing `claude-review.yml`.** Older versions of the Claude action refused to run when the PR's copy of its workflow differed from `main`'s (*"Workflow validation failed…"*), so such a PR could not pass the required check. With the pinned **v1.0.276** this no longer happens: on 2026-11-16 the PRs adding `allowed_bots` (growercare#22 and the four code repositories) each received a full review and passed. Only if a future version brings the guard back (the log shows "Workflow validation failed"):
+1. remove `claude-review` from `required_status_checks` (Settings → Rules, or the API);
+2. review that PR yourself and merge it;
+3. re-run `scripts/apply-repo-settings.sh` straight away.
 
-This protects against a PR rewriting its own reviewer. Consequences:
-- **The PR that introduces `claude-review.yml` can't be reviewed.** Merge it while `claude-review` is not yet a required check.
-- **Later PRs that edit `claude-review.yml`** are blocked by the required check. Procedure:
-  1. remove `claude-review` from `required_status_checks` in the GitHub UI (Settings → Rules) or the API;
-  2. review that PR yourself and merge it;
-  3. re-run `scripts/apply-repo-settings.sh`.
+**Dependabot PRs.** The action refuses bot actors (*"Workflow initiated by non-human actor: dependabot (type: Bot)"*) unless they are listed, so the gate failed closed. The workflow sets `allowed_bots: dependabot` (SPEC-PLAT-03 R44), with no wildcard. Dependabot runs only receive **Dependabot** secrets, so each repository also needs `gh secret set CLAUDE_CODE_OAUTH_TOKEN --app dependabot`. PLAT-R23 exempts Dependabot-authored PRs from the `Spec:` line. After changing any of this, comment `@dependabot recreate` on open Dependabot PRs.
 
 ### 10.5 False positives
 - Reply on the inline comment with the evidence.
@@ -344,7 +341,7 @@ gh pr checks <n> --watch                             # verify, policy, claude-re
 | Labels created as `review` instead of `review:critical` | `name:color` split on the first colon | Split on the last colon: `${label%:*}` / `${label##*:}` |
 | Scripts not executable on Linux runners | Windows doesn't record the exec bit | `git update-index --chmod=+x <files>`; verify with `git ls-files -s` |
 | CRLF warnings | Files edited on Windows | `.gitattributes` with `eol=lf`; Git normalises on commit |
-| `claude-review`: "review incomplete: empty structured output" | (a) secret missing, or (b) workflow differs from `main` (validation) | (a) set the secret; (b) see §10.4 |
+| `claude-review`: "review incomplete: empty structured output" | (a) secret missing (for Dependabot PRs: the *Dependabot* secret), (b) bot actor not in `allowed_bots`, or (c) workflow validation in older action versions | (a) set the secret; (b), (c) see §10.4. The step log names the cause |
 | `gh pr merge` blocked for the assistant | Assistant permission policy | The maintainer merges in the UI |
 | `UnicodeEncodeError` from gate scripts locally | Windows console uses cp1252 | Scripts call `sys.stdout.reconfigure(encoding="utf-8")` |
 | Coverage per module looked like 9–40% | Unit and IT reports were separate; libraries weren't credited for service ITs | The `coverage` aggregate module merges everything |
