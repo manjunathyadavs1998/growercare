@@ -1,3 +1,5 @@
+> **Superseded in part by ADR-017 (2026-11-16).** The backend is no longer one monorepo: each service has its own repository, shared code is released as versioned libraries (`growercare-platform-libs`), and local infrastructure lives in `growercare-local-platform`. The rest of this document (frontend, data platform, infra, deploy repositories) still applies.
+
 # Git Repositories (6)
 
 **Strategy:** one monorepo per technology stack, plus separate repos for contracts, data platform, infrastructure and deployment state (ADR-008).

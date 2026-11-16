@@ -1,18 +1,7 @@
-# SPEC-PLAT-02 R27. Later rules win. Split per team when more maintainers join (e.g. @org/case-team on case-service).
+# SPEC-PLAT-02 R27. Later rules win.
 *                                   @manjunathyadavs1998
-
-# Architecture decisions and specs: changes need the architecture owner
 /docs/architecture/adr/             @manjunathyadavs1998
 /docs/specs/                        @manjunathyadavs1998
-
-# Security-sensitive code and configuration
-/gc-backend/libs/gc-security/       @manjunathyadavs1998
-/gc-backend/local-dev/keycloak/     @manjunathyadavs1998
-
-# Schema and API contracts
-/gc-backend/**/db/                  @manjunathyadavs1998
-/gc-backend/contracts/              @manjunathyadavs1998
-
-# Repository governance
+/templates/                         @manjunathyadavs1998
 /.github/                           @manjunathyadavs1998
 /scripts/                           @manjunathyadavs1998

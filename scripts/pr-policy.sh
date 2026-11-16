@@ -33,15 +33,15 @@ if ! grep -qiE '^Spec:[[:space:]]*(docs/specs/[A-Za-z0-9/_.-]+\.md|n/a[[:space:]
 fi
 
 # R24 — production code changes come with tests
-main_changed=$(grep -cE '^gc-backend/.+/src/main/' <<<"$files" || true)
-test_changed=$(grep -cE '^gc-backend/.+/src/test/' <<<"$files" || true)
+main_changed=$(grep -cE '(^|/)src/main/' <<<"$files" || true)
+test_changed=$(grep -cE '(^|/)src/test/' <<<"$files" || true)
 if (( main_changed > 0 && test_changed == 0 )) && ! grep -qiE '^Tests:[[:space:]]*n/a[[:space:]]*[-–—:][[:space:]]*.{3,}' <<<"$body"; then
   fail "PLAT-R24" "production code changed without test changes; add parameterized tests for the spec rows (or 'Tests: n/a – <reason>')"
 fi
 
 # R25 — migrations keep the schema analysis doc honest (warning only)
-if grep -qE '^gc-backend/.+/db/.+\.sql$' <<<"$files" && ! grep -qx 'docs/backend/01_RDS_SCHEMA.md' <<<"$files"; then
-  warn "PLAT-R25" "a migration changed but docs/backend/01_RDS_SCHEMA.md did not; update the schema analysis if tables/keys changed"
+if grep -qE '(^|/)db/.+\.sql$' <<<"$files" && ! grep -qx 'docs/schema.md' <<<"$files"; then
+  warn "PLAT-R25" "a migration changed but docs/schema.md did not; update the schema analysis if tables/keys changed"
 fi
 
 if (( errors > 0 )); then
