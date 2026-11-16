@@ -58,6 +58,11 @@ class JdbcAttachmentRepository implements AttachmentRepository {
     }
 
     @Override
+    public void lockCase(long caseId) {
+        jdbc.sql(sql.get("attachment.lockCaseAttachments")).param("caseId", Long.toString(caseId)).query().listOfRows();
+    }
+
+    @Override
     public int countLive(ShardId shard, long caseId) {
         return jdbc.sql(sql.render("attachment.countLive", shard.schemaName())).param("caseId", caseId)
                 .query(Integer.class).single();

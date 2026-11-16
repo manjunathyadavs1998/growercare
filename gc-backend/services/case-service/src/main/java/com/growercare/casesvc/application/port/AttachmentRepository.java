@@ -23,6 +23,9 @@ public interface AttachmentRepository {
 
     Attachment insert(ShardId shard, NewAttachment attachment);
 
+    /** R99: serialise attachment requests of one case until the transaction ends. */
+    void lockCase(long caseId);
+
     /** R99: AWAITING_UPLOAD + PENDING + CLEAN. */
     int countLive(ShardId shard, long caseId);
 

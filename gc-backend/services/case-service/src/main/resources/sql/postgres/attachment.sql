@@ -14,6 +14,10 @@ SELECT :caseId, id.attachment_id, :kind, :keyPrefix || id.attachment_id, :conten
 RETURNING case_id, attachment_id, kind, content_type, size_bytes, sha256_hex, scan_status, object_key,
           uploaded_by_user_id, comment_id, created_at, completed_at, scanned_at
 
+-- R99: serialises count-then-insert per case for the rest of the transaction (case ids are globally unique).
+-- name: lockCaseAttachments
+SELECT pg_advisory_xact_lock(hashtextextended('gc.attachment-limit.' || :caseId, 0))
+
 -- R99
 -- name: countLive
 SELECT count(*) FROM {shard}.case_attachment

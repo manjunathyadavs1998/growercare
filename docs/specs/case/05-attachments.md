@@ -27,7 +27,7 @@ Status machine: `AWAITING_UPLOAD → PENDING → CLEAN | INFECTED | REJECTED`, a
 | CASE-R96 | caller with `case:attach` who can read the case | `POST /cases/{id}/attachments {kind, contentType, sizeBytes, sha256}` | 201 `{attachmentId, status: AWAITING_UPLOAD, upload: {method: PUT, url, headers, expiresAt}}`; row created; the URL expires in 5 min and its signature binds content type, length and SHA-256 |
 | CASE-R97 | — | kind unknown · content type not allowed for the kind · size ≤ 0 or above the kind's limit · sha256 not 64 hex | 400 (field errors) |
 | CASE-R98 | caller lacks `case:attach` · cannot read the case | request | 403 · 404 |
-| CASE-R99 | the case already has 20 live attachments · the case is closed and the caller is a grower or partner | request | 422 `attachment.limit-reached` · 422 `attachment.case-closed` |
+| CASE-R99 | the case already has 20 live attachments · the case is closed and the caller is a grower or partner | request | 422 `attachment.limit-reached` · 422 `attachment.case-closed`. The count and insert are **serialised per case** (transaction-scoped advisory lock), so concurrent requests can't exceed 20 |
 | CASE-R100 | the uploader, after PUT | `POST /cases/{id}/attachments/{attId}/complete` | object exists with the declared size and checksum → 200, status PENDING. Repeating it once PENDING or later returns 200 with the current state (idempotent) |
 | CASE-R101 | the object is missing · its size differs from the declared size | complete | 422 `attachment.upload-missing` · 422 `attachment.upload-mismatch`; the row stays AWAITING_UPLOAD |
 | CASE-R102 | somebody other than the uploader | complete | 404 (only the uploader completes) |
@@ -53,6 +53,7 @@ Fixtures: case A (grower.in1, IN, shared with retailer 501). `jpeg` = a small re
 | CASE-E104 | R97 | grower.in1 | kind `SELFIE` · PHOTO `application/pdf` · PHOTO 26 MB · VIDEO 101 MB · sha256 `xyz` | 400 each |
 | CASE-E105 | R98 | agro.in (no `case:attach`? see note) · care.br | on case A | 403 · 404 |
 | CASE-E106 | R99 | grower.in1 | 21st live attachment · on a CLOSED case | 422 `attachment.limit-reached` · 422 `attachment.case-closed` |
+| CASE-E106c | R99 | grower.in1 | 25 concurrent requests on a case with no attachments | exactly 20 × 201 and 5 × 422 `attachment.limit-reached`; 20 rows |
 | CASE-E107 | R99 | care.in | on a CLOSED case | 201 (staff may still attach) |
 | CASE-E108 | R100 | grower.in1 | PUT the declared bytes, complete, complete again | 200 PENDING · 200 PENDING (same row) |
 | CASE-E109 | R101 | grower.in1 | complete without PUT · object of a different size (written with the owner's S3 credentials; the presigned PUT signs Content-Length) | 422 `attachment.upload-missing` · 422 `attachment.upload-mismatch` |

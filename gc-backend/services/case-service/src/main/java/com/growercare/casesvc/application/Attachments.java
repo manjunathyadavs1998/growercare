@@ -59,6 +59,7 @@ public class Attachments {
         }
         var shard = located.shard();
         var attachment = tx.execute(status -> {
+            repo.lockCase(caseId);                                                                        // R99: no race
             if (repo.countLive(shard, caseId) >= AttachmentRules.MAX_LIVE_PER_CASE) {                    // R99
                 throw new BusinessRuleException("attachment.limit-reached",
                         "A case can hold at most " + AttachmentRules.MAX_LIVE_PER_CASE + " attachments");

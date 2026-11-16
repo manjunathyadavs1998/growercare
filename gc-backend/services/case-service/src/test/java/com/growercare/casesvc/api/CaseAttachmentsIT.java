@@ -209,6 +209,22 @@ class CaseAttachmentsIT extends CaseApiTestBase {
                     .andExpect(jsonPath("$.rule").value("attachment.limit-reached"));
         }
 
+        @Test
+        void caseE106cConcurrentRequestsCannotExceedTheLimit() throws Exception {
+            var caseId = caseA();
+            Callable<Integer> one = () -> request(GROWER_IN1, caseId, "PHOTO", "image/jpeg", 1000, "a".repeat(64))
+                    .andReturn().getResponse().getStatus();
+            var statuses = new java.util.ArrayList<Integer>();
+            try (var pool = Executors.newFixedThreadPool(8)) {
+                for (var future : pool.invokeAll(java.util.Collections.nCopies(25, one))) {
+                    statuses.add(future.get());
+                }
+            }
+            assertThat(statuses).filteredOn(s -> s == 201).hasSize(20);
+            assertThat(statuses).filteredOn(s -> s == 422).hasSize(5);
+            assertThat(count("SELECT count(*) FROM {shard}.case_attachment WHERE case_id = ?", caseId)).isEqualTo(20);
+        }
+
         /** actor, expected status (closed case). */
         static Stream<Arguments> closedCase() {
             return Stream.of(
