@@ -1,4 +1,8 @@
 # SPEC-PLAT-01: API contracts, architecture rules, end-to-end smoke test
+
+> **Paths after ADR-017 (2026-11-16).** This document was written for the `gc-backend` monorepo. The rules still hold; the paths moved:
+> `gc-backend/services/<svc>` → repository `growercare-<svc>` · `gc-backend/contracts/<svc>.openapi.json` → `contracts/` in that repository · `gc-backend/contracts/events/` → `gc-event-contracts` in growercare-platform-libs · `gc-backend/local-dev/` (incl. `smoke.sh`) → growercare-local-platform · `gc-backend/coverage` → per repository (services `target/site/jacoco-merged/jacoco.xml`, libs `coverage/target/site/jacoco-aggregate/jacoco.xml`) · workflow `backend-ci` → the kit's `ci.yml` (check `verify`). See SPEC-PLAT-06.
+
 - **Requirements:** NFR (maintainability, security), ADR-001 (hexagonal services), ADR-013 (no ORM), convention 6 (contract-first)
 - **Status:** Implemented (agreed 2026-11-15; build green, smoke 17/17 PASS on the local stack)
 - **Owner:** gc-backend (all services)

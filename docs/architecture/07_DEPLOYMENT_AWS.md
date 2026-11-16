@@ -62,7 +62,7 @@ flowchart TB
 ## 5. CI/CD pipeline
 ```mermaid
 flowchart LR
-  dev[PR to gc-backend] --> ci[GitHub Actions CI<br/>affected modules]
+  dev[PR to a service repository] --> ci[GitHub Actions CI<br/>repo kit]
   ci --> t1[Unit + ArchUnit]
   ci --> t2[Testcontainers integration<br/>Postgres, Kafka, Redis]
   ci --> t3[Pact verify vs broker]

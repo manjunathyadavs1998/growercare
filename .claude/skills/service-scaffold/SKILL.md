@@ -3,14 +3,15 @@ name: service-scaffold
 description: Scaffold a new GrowerCare Spring Boot microservice (or a new module in an existing one) with hexagonal layout, policy-sdk authorization, shard routing, outbox/inbox, observability, Problem Details, Dockerfile, Helm values and CI workflow. Use when creating a service, adding a bounded-context module, or checking that a service follows the platform conventions.
 ---
 
-# Service scaffold (gc-backend)
+# Service scaffold
 
 Read first: `docs/architecture/03_TECH_STACK.md`, `04_REPOSITORIES.md`, and the service's doc in `docs/architecture/01_SERVICES/`.
 
 ## 1. Module & build
-- Location: `gc-backend/services/<service-name>/` as a Maven module (ADR-014). Add it to the parent `pom.xml` `<modules>`.
-- Its POM inherits `com.growercare:gc-backend`. Dependency versions come only from the parent's `<dependencyManagement>` / the Boot BOM.
-- Copy the dependency set from `services/case-service/pom.xml`.
+- Location: a new repository `growercare-<service-name>` (ADR-017). Use growercare-case-service as the reference, then run `scripts/apply-java-repo-kit.sh <repo-dir> service` from the growercare repository for CI, PR policy, review and hooks.
+- Its POM inherits `com.growercare:gc-parent` at a released libs version. Dependency versions come only from the parent's `<dependencyManagement>` / the Boot BOM.
+- Configuration is environment-only (SPEC-PLAT-06): no defaults for hosts, URLs, users, passwords, secrets or buckets; document every variable in `.env.example`; the service refuses to start, naming every missing one.
+- Write `CLAUDE.md`, `docs/schema.md` and the specs under `docs/specs/<service>/` in the new repository.
 - Java 21, Spring Boot 4.1.2, Spring MVC (`spring-boot-starter-webmvc`) with `spring.threads.virtual.enabled=true`. Use WebFlux only for gateway/realtime.
 - Coding rules: load `java-backend-standards`.
 
@@ -26,7 +27,7 @@ com.growercare.<service>/
 │  └─ out/kafka/      # (normally none: events go through the outbox table)
 └─ config/
 ```
-Add the standard ArchUnit test from `libs/test-support` (`HexagonalRules.check(<basePackage>)`).
+Add the standard ArchUnit test from gc-test-support (`HexagonalRules.check(<basePackage>)`).
 
 ## 3. Mandatory platform libraries
 | Concern | Use | Never |

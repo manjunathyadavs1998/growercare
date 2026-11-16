@@ -1,4 +1,8 @@
 # SPEC-PLAT-02: Repository governance (GitHub)
+
+> **Paths after ADR-017 (2026-11-16).** This document was written for the `gc-backend` monorepo. The rules still hold; the paths moved:
+> `gc-backend/services/<svc>` → repository `growercare-<svc>` · `gc-backend/contracts/<svc>.openapi.json` → `contracts/` in that repository · `gc-backend/contracts/events/` → `gc-event-contracts` in growercare-platform-libs · `gc-backend/local-dev/` (incl. `smoke.sh`) → growercare-local-platform · `gc-backend/coverage` → per repository (services `target/site/jacoco-merged/jacoco.xml`, libs `coverage/target/site/jacoco-aggregate/jacoco.xml`) · workflow `backend-ci` → the kit's `ci.yml` (check `verify`). See SPEC-PLAT-06.
+
 - **Requirements:** NFR maintainability and security; conventions 9–12 in `CLAUDE.md` (tests before claims, ADR changes, spec-driven, parameterized)
 - **Status:** Implemented
 - **Repository:** `manjunathyadavs1998/growercare`, **public** since 2026-11-15, with `main` locked: PR only, no bypass for anyone (D6)

@@ -96,7 +96,7 @@ Implemented contracts: `docs/specs/case/02-case-lifecycle.md`, `03-comments-and-
   - SLA events: `case.sla.warning`, `case.sla.breached`;
   - `comment.posted`.
 
-  Contracts are in `gc-backend/contracts/events/`.
+  Contracts are in `gc-event-contracts` (growercare-platform-libs, `src/main/resources/gc/events/`).
 - **`case.attachment.scanned`** (SPEC-CASE-05): an attachment was scanned (CLEAN / INFECTED / REJECTED). Attachments live in case-service for now (ADR-016).
 - **Consumer `case-service.iam-grant-cache`** reads `iam.grant.events`. On `iam.grant.created` / `iam.grant.revoked` it evicts the cached principal of `subject`. It uses the `msg.inbox` dedup, 3 retries and then `dlq.case-service.iam-grant-cache`.
 

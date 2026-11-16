@@ -18,7 +18,7 @@ Spec: docs/specs/<service>/<NN>-<feature>.md
 ## Checklist
 - [ ] Spec status and traceability table updated
 - [ ] API change → `contracts/*.openapi.json` regenerated and reviewed
-- [ ] Migration → expand/contract, shard-lock first line, `docs/backend/01_RDS_SCHEMA.md` updated
+- [ ] Migration → expand/contract, shard-lock first line, `docs/schema.md` updated
 - [ ] Security: permission (403) and scope (404) rules covered by the isolation matrix
 - [ ] No secrets, PII or real customer data in code, tests, logs or fixtures
 - [ ] Decision changed → superseding ADR in `docs/architecture/adr/`

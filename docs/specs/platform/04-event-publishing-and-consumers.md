@@ -1,4 +1,8 @@
 # SPEC-PLAT-04: Event publishing (outbox → Debezium → Kafka) and idempotent consumers
+
+> **Paths after ADR-017 (2026-11-16).** This document was written for the `gc-backend` monorepo. The rules still hold; the paths moved:
+> `gc-backend/services/<svc>` → repository `growercare-<svc>` · `gc-backend/contracts/<svc>.openapi.json` → `contracts/` in that repository · `gc-backend/contracts/events/` → `gc-event-contracts` in growercare-platform-libs · `gc-backend/local-dev/` (incl. `smoke.sh`) → growercare-local-platform · `gc-backend/coverage` → per repository (services `target/site/jacoco-merged/jacoco.xml`, libs `coverage/target/site/jacoco-aggregate/jacoco.xml`) · workflow `backend-ci` → the kit's `ci.yml` (check `verify`). See SPEC-PLAT-06.
+
 - **Requirements:** ADR-001 (async integration), ADR-012 (topics/keys), `02_DESIGN_PATTERNS.md` (transactional outbox + Debezium outbox router, idempotent consumer), CLAUDE.md conventions 3 and 5; IAM ACC-1 (grant changes take effect promptly)
 - **Status:** Implemented (agreed 2026-11-15; D2 = JSON + JSON Schema; smoke E71–E74 green 2026-11-16)
 - **Owner:** gc-outbox (library), identity-access-service, case-service, local-dev
