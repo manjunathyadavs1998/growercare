@@ -1,5 +1,5 @@
 # ADR-012: Kafka topic, keying and partitioning conventions
-- **Status:** Accepted · 2026-11-15
+- **Status:** Accepted · 2026-11-15 · the "Avro" bullet is superseded by ADR-015 (JSON + JSON Schema until the AWS stage)
 - **Context:** Per-aggregate ordering is required (case events, comments). Adding partitions later remaps keys. The volume target is 1B users.
 - **Decision:**
   - Key = aggregate ID.

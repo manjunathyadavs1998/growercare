@@ -77,3 +77,8 @@ Never hard-code a schema name; `ShardMigrationConventionsTest` fails the build i
   - an idempotent re-run.
 - Static rules: `ShardMigrationConventionsTest` (lock first; no concrete schema names).
 - For expand/contract steps: run the *previous* app version's repository tests against the new schema (backward-compatibility test).
+
+## Lessons (SPEC-PLAT-04)
+- **Owner pool size:** each shard's Flyway run holds about 2 connections (schema history + migration) while it waits on the shard advisory lock 7240001. A pool of `parallelism + 1` **deadlocks**: the lock holder sits "idle in transaction" waiting for a connection held by the lock waiters. `CaseSchemaConfig` uses `parallelism * 3 + 1` and a 60 s connection timeout. Tests don't catch this: `PostgresTestDatabase` data sources are unpooled.
+- **Dev seed vs later common migrations:** the dev seed is numbered V1000+. With the seed on (local profile), the migrator runs Flyway with `outOfOrder(true)` (`Settings.outOfOrder`, IAM `spring.flyway.out-of-order` in `application-local.yml`), so a common V5 added later still applies. Production never has the seed and keeps strict ordering.
+- **New outbox-like tables that Debezium must stream:** `ALTER PUBLICATION gc_outbox ADD TABLE …` plus `GRANT SELECT … TO ${cdc_role}` in the same migration. Every migrator caller passes the `cdc_role` placeholder.

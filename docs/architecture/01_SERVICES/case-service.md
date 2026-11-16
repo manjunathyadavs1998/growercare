@@ -90,6 +90,15 @@ Implemented contracts: `docs/specs/case/02-case-lifecycle.md`, `03-comments-and-
 - **Publishes:** `case.created`, `case.assigned`, `case.status_changed`, `case.root_cause_set`, `case.incident.reportable`, `case.closed`, `comment.posted`, `case.sla.breach_risk`.
 - **Consumes:** `field.visit.completed`, `claims.decision.made`, `media.scanned`, `catalog.product.withdrawn`, `grower.updated`.
 
+**Implemented so far (SPEC-PLAT-04):**
+- **Topic `case.case.events`** (key = caseId, published by Debezium from the shard outboxes). It carries:
+  - case events: `case.created`, `case.routed`, `case.assigned`, `case.status_changed`, `case.shared`, `case.unshared`;
+  - SLA events: `case.sla.warning`, `case.sla.breached`;
+  - `comment.posted`.
+
+  Contracts are in `gc-backend/contracts/events/`.
+- **Consumer `case-service.iam-grant-cache`** reads `iam.grant.events`. On `iam.grant.created` / `iam.grant.revoked` it evicts the cached principal of `subject`. It uses the `msg.inbox` dedup, 3 retries and then `dlq.case-service.iam-grant-cache`.
+
 ## Scaling profile (largest cell, worst case)
 | Metric | Value |
 |---|---|

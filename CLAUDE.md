@@ -19,7 +19,7 @@ This repo contains **design documentation, Claude skills and agents**, plus **`g
 | Comments & partition-based purge | `docs/syngenta/05_CASE_COMMENTS_DESIGN.md` |
 | Architecture overview, 14 services | `docs/architecture/00_OVERVIEW.md`, `docs/architecture/01_SERVICES/` |
 | Patterns, stack, repos, scaling, frontend, AWS | `docs/architecture/02–07_*.md` |
-| Decisions | `docs/architecture/adr/ADR-001…014` (013: no ORM, hand-written SQL · 014: Maven) |
+| Decisions | `docs/architecture/adr/ADR-001…015` (013: no ORM, hand-written SQL · 014: Maven · 015: JSON event payloads until AWS) |
 | RDS schema (normalisation, keys, partitions, DB roles) | `docs/backend/01_RDS_SCHEMA.md` |
 | Feature specs (rules, examples, API, traceability) | `docs/specs/<service>/` (e.g. `iam/01-grant-administration.md`, `case/01-case-access-scope.md`) |
 | Superseded (appliance version, kept for history) | `docs/BUSINESS_REQUIREMENTS.md` |
@@ -56,7 +56,8 @@ Java backend: `spec-driven-development` (load first for any feature), `java-back
 12. **Tests are parameterized by default** (`@ParameterizedTest`; row names = spec example IDs). Plain `@Test` only for wiring checks or single-scenario examples.
 
 ## Backend: local development (`gc-backend/`)
-- **Stack:** Java 21, Spring Boot 4.1.2, Maven multi-module, PostgreSQL 17, Redis 7.4, Keycloak 26.
+- **Stack:** Java 21, Spring Boot 4.1.2, Maven multi-module, PostgreSQL 17, Redis 7.4, Keycloak 26, Kafka 4.3 (KRaft) + Debezium 3.6 Connect.
+- **Events (SPEC-PLAT-04):** outbox → Debezium → `<domain>.<aggregate>.events`; contracts in `gc-backend/contracts/events/*.schema.json`; consumers use `msg.inbox` + DLQ `dlq.<group>`. Skill: `event-contract`.
 - **Modules:**
   - libraries: `gc-common`, `gc-shard-routing`, `gc-security`, `gc-outbox`, `gc-test-support`;
   - services: `identity-access-service` (port 8081) and `case-service` (port 8082).
@@ -78,8 +79,9 @@ Java backend: `spec-driven-development` (load first for any feature), `java-back
 - **End to end:**
   1. `mvn -B package -DskipTests`
   2. `local-dev/run-services.sh start`
-  3. `local-dev/smoke.sh` (exit code = failed checks)
-  4. `local-dev/run-services.sh stop`
+  3. `local-dev/debezium/register.sh` (registers the outbox connectors; needs the migrations from step 2)
+  4. `local-dev/smoke.sh` (exit code = failed checks)
+  5. `local-dev/run-services.sh stop`
 
   The first case-service start migrates all 128 shards (~2 min).
 - **API docs:** Swagger UI at http://localhost:8081/swagger-ui/index.html and http://localhost:8082/swagger-ui/index.html (local profile only). Committed contracts are in `gc-backend/contracts/`.

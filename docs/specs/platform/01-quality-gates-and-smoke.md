@@ -20,7 +20,7 @@
 | PLAT-R4 | any main class | ArchUnit | `domain` imports no Spring, JDBC, servlet, Jackson or `adapters` |
 | PLAT-R5 | any main class | ArchUnit | `application` does not depend on `adapters` |
 | PLAT-R6 | any main class | ArchUnit | `adapters.in` does not depend on `adapters.out` |
-| PLAT-R7 | any main class | ArchUnit | no `org.hibernate`, `jakarta.persistence` or `org.springframework.kafka` (ADR-013; events via the outbox only) |
+| PLAT-R7 | any main class | ArchUnit | ~~no `org.hibernate`, `jakarta.persistence` or `org.springframework.kafka`~~ **Superseded by SPEC-PLAT-04 R64 + R65** (consumers need Spring Kafka) |
 | PLAT-R8 | any main class | ArchUnit | no field injection (`@Autowired` fields), no `System.out/err`, no `java.util.logging` |
 | PLAT-R9 | any main class | ArchUnit | `@RestController` classes live in `adapters.in.web` and do not touch `JdbcClient` |
 | PLAT-R10 | real stack + both services (local) | `smoke.sh` | every scenario below passes; prints a PASS/FAIL table; exit code ≠ 0 on any failure |
