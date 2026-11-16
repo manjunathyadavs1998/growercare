@@ -14,7 +14,7 @@ Never include real personal data or live tokens.
 - fix or mitigation timeline agreed with the reporter.
 
 ## Scope and known dev-only material
-- `gc-backend/local-dev/` holds **local development credentials only**:
+- `growercare-local-platform` (separate repository) holds **local development credentials only**:
   - the Keycloak realm test users;
   - the `case-service` client secret;
   - `.env.example` values.
