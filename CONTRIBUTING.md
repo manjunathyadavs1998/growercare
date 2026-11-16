@@ -1,21 +1,23 @@
 # Contributing to GrowerCare
 
-These rules are enforced by CI (`pr-policy`, `backend-ci`) and local git hooks. They are written down in
+These rules are enforced by CI (`pr-policy`, `verify`, `claude-review`) and local git hooks. They are written down in
 `docs/specs/platform/02-repository-governance.md` (SPEC-PLAT-02).
 
 ## 1. One-time setup
 ```bash
 scripts/install-hooks.sh          # commit-msg (Conventional Commits) + pre-push (no direct pushes to main)
-cd gc-backend/local-dev && cp .env.example .env && docker compose up -d --wait
 ```
-You'll need JDK 21, Maven 3.9 and Docker Desktop (Testcontainers). See `CLAUDE.md` → "Backend: local development".
+This repository holds docs, ADRs, platform specs, skills and the repo kit. Code lives in one repository per service
+(ADR-017); each has its own `CONTRIBUTING.md`. To run the stack locally, start with
+[growercare-local-platform](https://github.com/manjunathyadavs1998/growercare-local-platform) (see `CLAUDE.md` →
+"Backend: how the pieces fit").
 
 ## 2. Workflow: spec first, always
 1. **Spec:** add or update `docs/specs/<service>/<NN>-<feature>.md`, with numbered rules, an example table, the API and the errors (skill `spec-driven-development`). New features get the spec agreed before code.
 2. **Branch:** `git switch -c <type>/<short-name>`, e.g. `feat/sla-timers`, `fix/stale-etag`.
 3. **Tests first:** write `@ParameterizedTest` rows from the spec examples, named by spec ID (`Arguments.argumentSet("CASE-E52 …", …)`), and see them fail.
 4. **Implement** until green. Follow the skills `java-backend-standards`, `java-persistence-sql`, `java-security-rbac` and `java-exception-handling`.
-5. **Verify:** run `cd gc-backend && mvn -B verify`. Run `local-dev/smoke.sh` if endpoints or security changed. Commit any regenerated `contracts/*.openapi.json`.
+5. **Verify:** in a service repository, run `mvn -B verify` (and the platform's `smoke.sh` if endpoints or security changed); commit any regenerated `contracts/*.openapi.json`. Here, the `verify` check runs the kit checks.
 6. **Pull request:** fill in the template. The title becomes the squash commit, and the body must name the spec (`Spec: docs/specs/…`).
 7. **Merge:** squash only, once all required checks are green and all conversations are resolved. The branch is deleted automatically.
 
