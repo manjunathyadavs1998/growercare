@@ -37,7 +37,7 @@ class EventHousekeepingIT extends CaseApiTestBase {
         if (store == Store.OUTBOX) {
             owner.sql("""
                     INSERT INTO in_s01.outbox (event_id, aggregate_type, aggregate_id, event_type, payload, occurred_at)
-                    VALUES (?, 'case', '1', 'case.routed', '{}', now() - make_interval(days => ?))""")
+                    VALUES (?, 'case', '1', 'test.housekeeping', '{}', now() - make_interval(days => ?))""")   // not a contract type (CaseEventContractIT)
                     .params(id, ageDays).update();
             maintenance.cleanupOutbox(Duration.ofDays(3));
             assertThat(owner.sql("SELECT count(*) FROM in_s01.outbox WHERE event_id = ?").param(id)
