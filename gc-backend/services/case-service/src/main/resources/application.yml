@@ -1,0 +1,121 @@
+# 12-factor: every environment-specific value comes from an env var (defaults = local-dev stack).
+server:
+  port: ${SERVER_PORT:8082}
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+
+spring:
+  application:
+    name: case-service
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gc_case}
+    username: ${DB_APP_USER:gc_case_app}
+    password: ${DB_APP_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      connection-timeout: 3000
+  flyway:
+    enabled: false   # Boot's single-schema Flyway is not used; see gc.migration (ShardedFlywayMigrator)
+
+# SPEC-PLAT-01 D1: API docs off by default; the local profile turns them on.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+gc:
+  # Sharded migrations (common `ref` schema + one schema per ref.shard row), run as the schema OWNER.
+  # In production set GC_MIGRATE=false on the service and run migrations from a pre-deploy Job.
+  migration:
+    enabled: ${GC_MIGRATE:true}
+    owner-user: ${DB_OWNER_USER:gc_case_owner}
+    owner-password: ${DB_OWNER_PASSWORD:}
+    app-role: ${spring.datasource.username}
+    cdc-role: ${GC_CDC_ROLE:gc_cdc}
+    dev-seed: false
+    parallelism: ${GC_MIGRATE_PARALLELISM:8}
+
+# ---------------------------------------------------------------- security (skill: java-security-rbac)
+# Keycloak proves identity; roles/scopes come from IAM grants. Issuer, signature, expiry and audience are validated.
+spring.security.oauth2.resourceserver.jwt:
+  issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/growercare}
+  audiences: gc-api,gc-internal
+
+# Client-credentials token for calling IAM's /internal API (Keycloak client "case-service", audience gc-internal).
+spring.security.oauth2.client:
+  registration:
+    iam:
+      provider: keycloak
+      client-id: ${IAM_CLIENT_ID:case-service}
+      client-secret: ${IAM_CLIENT_SECRET:}
+      authorization-grant-type: client_credentials
+  provider:
+    keycloak:
+      token-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/growercare}/protocol/openid-connect/token
+
+# Redis: grant cache only (ADR-011). Short timeouts so an outage degrades to direct IAM calls.
+spring.data.redis:
+  host: ${REDIS_HOST:localhost}
+  port: ${REDIS_PORT:6379}
+  password: ${REDIS_PASSWORD:}
+  timeout: 500ms
+  connect-timeout: 500ms
+
+gc.iam:
+  base-url: ${IAM_BASE_URL:http://localhost:8081}
+  connect-timeout: 1s
+  read-timeout: 2s
+gc.security:
+  principal-cache-ttl: 5m
+
+# ---------------------------------------------------------------- events (SPEC-PLAT-04)
+# Publishing is Debezium's job (outbox → Kafka); the service only consumes. Production adds MSK IAM auth + TLS
+# through SPRING_KAFKA_* environment variables.
+spring.kafka:
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+  consumer:
+    auto-offset-reset: earliest
+    enable-auto-commit: false
+    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  producer:   # DLQ only
+    acks: all
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+gc.events:
+  consumers-enabled: ${GC_EVENTS_CONSUMERS_ENABLED:true}
+  grant-topic: iam.grant.events
+  retry-initial-backoff: 1s
+
+# ---------------------------------------------------------------- attachments (SPEC-CASE-05)
+# AWS: leave endpoint and keys empty (regional endpoint + IRSA); buckets are created by gc-infra.
+gc.attachments:
+  endpoint: ${S3_ENDPOINT:}
+  region: ${S3_REGION:us-east-1}
+  access-key: ${S3_ACCESS_KEY:}
+  secret-key: ${S3_SECRET_KEY:}
+  staging-bucket: ${S3_STAGING_BUCKET:gc-media-staging}
+  clean-bucket: ${S3_CLEAN_BUCKET:gc-media-clean}
+  quarantine-bucket: ${S3_QUARANTINE_BUCKET:gc-media-quarantine}
+  sign-checksum: ${S3_SIGN_CHECKSUM:true}
+  create-buckets: false
