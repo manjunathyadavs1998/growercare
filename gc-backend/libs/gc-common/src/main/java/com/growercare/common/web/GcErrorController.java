@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
  * no exception details.
  */
 @RestController
+@io.swagger.v3.oas.annotations.Hidden   // infrastructure, not API: stays out of the OpenAPI contracts (SPEC-PLAT-01 R1)
 public class GcErrorController implements ErrorController {
 
     @RequestMapping("${server.error.path:/error}")
