@@ -30,3 +30,10 @@ updates:
     schedule: { interval: weekly, day: monday }
     commit-message: { prefix: "build", include: scope }
     labels: [dependencies, local-dev]
+    # SPEC-PLAT-05 R70: stateful engines must match AWS (Aurora/RDS PostgreSQL; ElastiCache Redis 7 / Valkey) and need a
+    # deliberate, spec'd upgrade test (partitions, Debezium replication slots). Minor/patch updates still come through.
+    ignore:
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "redis"
+        update-types: ["version-update:semver-major"]
