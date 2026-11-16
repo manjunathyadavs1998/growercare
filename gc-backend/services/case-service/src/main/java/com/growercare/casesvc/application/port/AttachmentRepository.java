@@ -34,8 +34,11 @@ public interface AttachmentRepository {
     /** R100: AWAITING_UPLOAD → PENDING. @return false if the row was not awaiting upload */
     boolean markPending(ShardId shard, long caseId, long attachmentId, Instant completedAt);
 
-    /** D4: PENDING rows, {@code FOR UPDATE SKIP LOCKED} (inside a transaction). */
-    List<Attachment> claimPending(ShardId shard, int limit);
+    /** D4/R114: the next PENDING row not in {@code exclude}, {@code FOR UPDATE SKIP LOCKED} (inside a transaction). */
+    Optional<Attachment> claimNext(ShardId shard, Collection<Long> exclude);
+
+    /** R114: increments {@code scan_attempts} of a still-PENDING row. @return the new count, or empty if no longer PENDING */
+    Optional<Integer> recordScanFailure(ShardId shard, long caseId, long attachmentId);
 
     /** R103–R105: PENDING → result. @return false if the row was no longer PENDING */
     boolean markScanned(ShardId shard, long caseId, long attachmentId, Attachment.Status result, Instant scannedAt);

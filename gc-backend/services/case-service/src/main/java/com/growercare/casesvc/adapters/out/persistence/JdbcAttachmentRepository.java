@@ -83,8 +83,17 @@ class JdbcAttachmentRepository implements AttachmentRepository {
     }
 
     @Override
-    public List<Attachment> claimPending(ShardId shard, int limit) {
-        return jdbc.sql(sql.render("attachment.claimPending", shard.schemaName())).param("limit", limit).query(ATTACHMENT).list();
+    public Optional<Attachment> claimNext(ShardId shard, Collection<Long> exclude) {
+        return jdbc.sql(sql.render("attachment.claimNext", shard.schemaName()))
+                .param("exclude", exclude.isEmpty() ? List.of(-1L) : List.copyOf(exclude))     // NOT IN () is invalid SQL
+                .query(ATTACHMENT).optional();
+    }
+
+    @Override
+    public Optional<Integer> recordScanFailure(ShardId shard, long caseId, long attachmentId) {
+        return jdbc.sql(sql.render("attachment.recordScanFailure", shard.schemaName()))
+                .param("caseId", caseId).param("attachmentId", attachmentId)
+                .query(Integer.class).optional();
     }
 
     @Override

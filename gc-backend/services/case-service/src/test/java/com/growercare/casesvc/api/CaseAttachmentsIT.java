@@ -334,6 +334,30 @@ class CaseAttachmentsIT extends CaseApiTestBase {
         }
 
         @Test
+        void caseE122OneBrokenAttachmentDoesNotBlockTheShard() throws Exception {
+            var caseId = caseA();
+            var broken = uploaded(GROWER_IN1, caseId, "PHOTO", "image/jpeg", TestImages.jpegWithGps());
+            var healthy = uploaded(GROWER_IN1, caseId, "INVOICE", "application/pdf", TestImages.pdf());
+            S3.deleteObject(b -> b.bucket(STAGING).key(keyOf(caseId, broken)));                // processing it now throws
+
+            scanJob.runOnce();
+            assertThat(statusOf(caseId, healthy)).isEqualTo("CLEAN");                         // the shard moved on
+            assertThat(statusOf(caseId, broken)).isEqualTo("PENDING");
+            assertThat(scanAttempts(caseId, broken)).isEqualTo(1);
+
+            scanJob.runOnce();
+            scanJob.runOnce();
+            assertThat(statusOf(caseId, broken)).isEqualTo("REJECTED");                       // 3 strikes
+            assertThat(events(caseId, broken, "REJECTED")).isEqualTo(1);
+        }
+
+        int scanAttempts(String caseId, String attachmentId) {
+            return owner.sql("SELECT scan_attempts FROM %s.case_attachment WHERE case_id = ? AND attachment_id = ?"
+                            .formatted(shardOf(caseId).schemaName()))
+                    .params(CaseSlaRoutingIT.numericId(caseId), CaseSlaRoutingIT.numericId(attachmentId)).query(Integer.class).single();
+        }
+
+        @Test
         void caseE115ConcurrentScansDecideOnce() throws Exception {
             var caseId = caseA();
             var id = uploaded(GROWER_IN1, caseId, "PHOTO", "image/jpeg", TestImages.jpegWithGps());

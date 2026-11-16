@@ -40,15 +40,22 @@ SELECT a.case_id, a.attachment_id, a.kind, a.content_type, a.size_bytes, a.sha25
 UPDATE {shard}.case_attachment SET scan_status = 'PENDING', completed_at = :completedAt
  WHERE case_id = :caseId AND attachment_id = :attachmentId AND scan_status = 'AWAITING_UPLOAD'
 
--- D4 / R107: replicas share the queue; a row is decided by exactly one of them.
--- name: claimPending
+-- D4 / R107 / R114: one row per transaction; replicas share the queue (SKIP LOCKED), and rows that already failed
+-- in this run are excluded so the rest of the shard is still processed.
+-- name: claimNext
 SELECT case_id, attachment_id, kind, content_type, size_bytes, sha256_hex, scan_status, object_key,
        uploaded_by_user_id, comment_id, created_at, completed_at, scanned_at
   FROM {shard}.case_attachment
- WHERE scan_status = 'PENDING'
+ WHERE scan_status = 'PENDING' AND attachment_id NOT IN (:exclude)
  ORDER BY completed_at NULLS FIRST
- LIMIT :limit
+ LIMIT 1
  FOR UPDATE SKIP LOCKED
+
+-- R114: counts a failed attempt (separate transaction from the failed one). Returns the new count.
+-- name: recordScanFailure
+UPDATE {shard}.case_attachment SET scan_attempts = scan_attempts + 1
+ WHERE case_id = :caseId AND attachment_id = :attachmentId AND scan_status = 'PENDING'
+RETURNING scan_attempts
 
 -- name: markScanned
 UPDATE {shard}.case_attachment SET scan_status = :result, scanned_at = :scannedAt

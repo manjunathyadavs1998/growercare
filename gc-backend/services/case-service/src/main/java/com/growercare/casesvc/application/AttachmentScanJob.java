@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -21,9 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * SPEC-CASE-05 D4, R103–R107, R113. Per shard, one transaction claims a batch of PENDING attachments
- * ({@code FOR UPDATE SKIP LOCKED}, so replicas share the work and each file is decided once). It publishes each
- * result (clean or quarantine object, status, activity, outbox) and deletes the staging objects after commit.
+ * SPEC-CASE-05 D4, R103–R107, R113, R114. Per shard, up to {@link #BATCH} PENDING attachments are each claimed and
+ * decided in their own transaction ({@code FOR UPDATE SKIP LOCKED}, so replicas share the work and each file is
+ * decided once). Each result (clean or quarantine object, status, activity, outbox) commits on its own, and the
+ * staging object is deleted after commit.
  * A failing shard is logged and skipped (SPEC-CASE-04 R95).
  */
 @Service
@@ -31,6 +33,8 @@ public class AttachmentScanJob {
 
     private static final Logger log = LoggerFactory.getLogger(AttachmentScanJob.class);
     static final int BATCH = 10;
+    /** R114: failed attempts before an attachment is REJECTED. */
+    static final int MAX_ATTEMPTS = 3;
     static final long SYSTEM_ACTOR = 0L;
 
     private final ReferenceData ref;
@@ -70,29 +74,71 @@ public class AttachmentScanJob {
         });
     }
 
+    /**
+     * R114: each attachment is claimed and decided in <b>its own</b> transaction, so one broken file rolls back only
+     * itself. A failed attachment is excluded for the rest of this run and its attempts are counted; at
+     * {@link #MAX_ATTEMPTS} it is REJECTED, so it can never block the shard's queue.
+     */
     long scanShard(ShardId shard) {
-        var temporary = new ArrayList<Path>();
-        var stagingToDelete = new ArrayList<String>();
-        try {
-            Integer decided = tx.execute(status -> {
-                int count = 0;
-                for (var attachment : repo.claimPending(shard, BATCH)) {
-                    var outcome = decide(attachment, temporary);
-                    var result = Attachment.Status.valueOf(outcome.result().name());
-                    if (!repo.markScanned(shard, attachment.caseId(), attachment.attachmentId(), result, clock.instant())) {
-                        continue;                                                              // decided elsewhere (R107)
+        var failedThisRun = new HashSet<Long>();
+        int decided = 0;
+        for (int i = 0; i < BATCH; i++) {
+            var claimed = new Attachment[1];
+            var temporary = new ArrayList<Path>();
+            try {
+                Boolean done = tx.execute(status -> {
+                    var next = repo.claimNext(shard, failedThisRun);
+                    if (next.isEmpty()) {
+                        return null;                                                           // queue empty for this run
                     }
-                    record(shard, attachment, outcome);
-                    stagingToDelete.add(attachment.objectKey());
-                    count++;
+                    claimed[0] = next.get();
+                    return decideAndRecord(shard, claimed[0], temporary);
+                });
+                if (done == null) {
+                    break;
                 }
-                return count;
-            });
-            stagingToDelete.forEach(key -> store.delete(ObjectStore.Area.STAGING, key));        // only after commit
-            return decided == null ? 0 : decided;
-        } finally {
-            temporary.forEach(AttachmentScanJob::deleteQuietly);
+                if (done) {
+                    store.delete(ObjectStore.Area.STAGING, claimed[0].objectKey());           // only after commit
+                    decided++;
+                }
+            } catch (RuntimeException e) {
+                if (claimed[0] == null) {
+                    throw e;                                                                   // claiming itself failed: shard-level (R95)
+                }
+                failedThisRun.add(claimed[0].attachmentId());
+                decided += recordFailure(shard, claimed[0], e);
+            } finally {
+                temporary.forEach(AttachmentScanJob::deleteQuietly);
+            }
         }
+        return decided;
+    }
+
+    /** @return true when this run decided the attachment; false when another replica already had */
+    private boolean decideAndRecord(ShardId shard, Attachment attachment, List<Path> temporary) {
+        var outcome = decide(attachment, temporary);
+        var result = Attachment.Status.valueOf(outcome.result().name());
+        if (!repo.markScanned(shard, attachment.caseId(), attachment.attachmentId(), result, clock.instant())) {
+            return false;                                                                      // decided elsewhere (R107)
+        }
+        record(shard, attachment, outcome);
+        return true;
+    }
+
+    /** R114: count the failure; the third one rejects the attachment. @return 1 if it was rejected now, else 0 */
+    private int recordFailure(ShardId shard, Attachment attachment, RuntimeException cause) {
+        log.error("attachment {} of case {} could not be scanned ({}); skipped for this run",
+                attachment.attachmentId(), attachment.caseId(), cause.getClass().getSimpleName(), cause);
+        Integer rejected = tx.execute(status -> {
+            int attempts = repo.recordScanFailure(shard, attachment.caseId(), attachment.attachmentId()).orElse(0);
+            if (attempts < MAX_ATTEMPTS
+                    || !repo.markScanned(shard, attachment.caseId(), attachment.attachmentId(), Attachment.Status.REJECTED, clock.instant())) {
+                return 0;
+            }
+            record(shard, attachment, new ScanPipeline.Outcome(ScanPipeline.Result.REJECTED, null, "scan failed " + attempts + " times"));
+            return 1;
+        });
+        return rejected == null ? 0 : rejected;
     }
 
     private ScanPipeline.Outcome decide(Attachment attachment, List<Path> temporary) {

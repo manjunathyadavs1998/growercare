@@ -247,6 +247,7 @@ SLA state is **not stored** (it would drift). It is computed from `sla_started_a
 | `ref.attachment_type_rule` | (`kind`, `content_type`) | D7 allow-list with `max_bytes` (25 MB images/documents, 100 MB MP4). Reference data, so a country profile can narrow it later |
 | `<shard>.case_attachment.scan_status` | — | `AWAITING_UPLOAD → PENDING → CLEAN \| INFECTED \| REJECTED`, `AWAITING_UPLOAD → EXPIRED`. Partial index on (`scan_status`, `created_at`) for unfinished rows drives the scan poller (`SKIP LOCKED`) and the 24 h expiry job |
 | `<shard>.case_attachment.comment_id` | FK (`case_id`, `comment_id`) → `case_comment` | D9: a comment attachment is a case attachment linked to one comment, and inherits the comment's visibility. `case_comment_attachment` (V2) is **deprecated** (dropped in a later contract step) |
+| `<shard>.case_attachment.scan_attempts` (shard V7) | — | R114: failed scan attempts; each attachment is scanned in its own transaction, and at 3 failures it is REJECTED so a poison file cannot block the shard's queue |
 | `object_key` | — | `<shard>/<caseId>/<attachmentId>`: ids only, never file names (PRV-5). Buckets (staging, clean, quarantine) are configuration |
 | `latitude` / `longitude` | — | Stay NULL in v1: precise location is PII (PRV-5) and needs field-level encryption first. EXIF GPS is stripped from images |
 | `iam.permission` `case:attach` | — | Granted to every role with `comment:post-public` or `comment:post-partner` (9 roles) |
