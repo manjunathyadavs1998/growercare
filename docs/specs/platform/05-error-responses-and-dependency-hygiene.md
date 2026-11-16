@@ -18,6 +18,7 @@
 | PLAT-R67 | a request the firewall rejects | — | 400 `VALIDATION_FAILED`, `errors[0].field = "path"` |
 | PLAT-R68 | a known path with an unsupported method · an unsupported request content type · an unsatisfiable `Accept` | — | 405 `METHOD_NOT_ALLOWED` + `Allow` header · 415 `UNSUPPORTED_MEDIA_TYPE` · 406 `NOT_ACCEPTABLE` (never 500) |
 | PLAT-R69 | a request body that is not valid JSON | — | 400 `VALIDATION_FAILED`, field `body` (regression guard; already implemented) |
+| PLAT-R72 | an error rendered at `/error` with status S | — | `code`/`title` never contradict S. Statuses with exactly one meaning keep their code (400 `VALIDATION_FAILED`, 401 `UNAUTHENTICATED`, 403 `PERMISSION_DENIED`, 404 `NOT_FOUND`, 405, 406, 415, 500 `INTERNAL_ERROR`, 503 `DEPENDENCY_UNAVAILABLE`). Every other status gets `code` = `HTTP_<S>` and the standard reason phrase as `title` (e.g. 413 → `HTTP_413` "Content Too Large"; 409 is **not** reported as `DUPLICATE`) |
 | PLAT-R70 | `.github/dependabot.yml` | Dependabot runs | `postgres` and `redis` images: `semver-major` updates ignored; everything else unchanged |
 | PLAT-R71 | JaCoCo 0.8.16, Keycloak 26.8 | `mvn -B verify` + coverage gate + `smoke.sh` | all green |
 
@@ -32,6 +33,7 @@
 | PLAT-E83 | R69 | `POST /cases` with body `{"growerId":` | 400 problem+json, field `body` |
 | PLAT-E84 | R66 | the same rejections against identity-access-service (`GET /grants/%2e%2e/1`, `GET /me;jsessionid=x`) | 400 problem+json |
 | PLAT-E86 | R67 | **smoke (real Tomcat):** `GET /cases/<id>/attachments//download`, i.e. an empty id (MockMvc does not reproduce Tomcat's `//` handling) | 400 problem+json |
+| PLAT-E87 | R72 | `/error` with status 404 · 413 · 409 · 502 · 500 | `NOT_FOUND` · `HTTP_413` "Content Too Large" · `HTTP_409` "Conflict" · `HTTP_502` "Bad Gateway" · `INTERNAL_ERROR`; `status` equals S every time |
 | PLAT-E85 | R71 | the local stack on Keycloak 26.8 | `smoke.sh`: 0 failed checks |
 
 ## 3. Traceability
@@ -39,5 +41,6 @@
 |---|---|
 | R66–R69 / E78–E83 | `CaseSecurityIT$ErrorResponses#everyErrorIsProblemJson` (parameterized) |
 | R66 / E84 | `IamSecurityIT$Authentication#rejectedPathsAreProblemJson` |
+| R72 / E87 | `GcErrorControllerTest#codeNeverContradictsTheStatus` (parameterized) |
 | R70 | `.github/dependabot.yml` (reviewed in this PR) |
 | R71 / E85 · R67 / E86 | CI `backend-ci` + coverage gate; `local-dev/smoke.sh` (PLAT-E86) |

@@ -155,7 +155,7 @@ class CaseSecurityIT {
                     argumentSet("PLAT-E80 unsupported method is 405 with Allow",
                             (Supplier<org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder>) () ->
                                     org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/cases").header("Authorization", bearer()),
-                            405, "METHOD_NOT_ALLOWED", null, "GET"),
+                            405, "METHOD_NOT_ALLOWED", null, "GET,POST"),
                     argumentSet("PLAT-E81 unsupported content type is 415",
                             (Supplier<org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder>) () ->
                                     org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/cases").header("Authorization", bearer())
@@ -180,7 +180,9 @@ class CaseSecurityIT {
                 result.andExpect(jsonPath("$.errors[0].field").value(field));
             }
             if (allowContains != null) {
-                result.andExpect(header().string("Allow", containsString(allowContains)));
+                for (var method : allowContains.split(",")) {                                   // every listed method (spec E80)
+                    result.andExpect(header().string("Allow", containsString(method)));
+                }
             }
         }
     }

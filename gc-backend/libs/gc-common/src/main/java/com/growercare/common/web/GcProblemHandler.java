@@ -176,14 +176,6 @@ public class GcProblemHandler {
             }
         }
 
-        /** SPEC-PLAT-05 D2: the problem code for a bare HTTP status (container errors rendered at /error). */
-        public static ErrorCode codeFor(int status) {
-            return java.util.Arrays.stream(ErrorCode.values())
-                    .filter(c -> c.status().value() == status)
-                    .findFirst()
-                    .orElse(status >= 500 ? ErrorCode.INTERNAL_ERROR : ErrorCode.VALIDATION_FAILED);
-        }
-
         public static ResponseEntity<ProblemDetail> response(ProblemDetail problem) {
             return ResponseEntity.status(problem.getStatus())
                     .contentType(org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON)
