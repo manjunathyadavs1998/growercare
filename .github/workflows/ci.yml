@@ -1,0 +1,39 @@
+# growercare holds architecture, specs, skills and the repo kit (ADR-017); there is no service code here.
+# "verify" (required status check) keeps the kit and the governance scripts working.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Scripts parse (repo + kit)
+        run: |
+          for f in scripts/*.sh templates/java-repo/scripts/*.sh templates/java-repo/.githooks/*; do bash -n "$f"; done
+          python3 -m py_compile scripts/*.py templates/java-repo/scripts/*.py
+
+      - name: Kit self-tests (PR policy, review gate, coverage gate)
+        run: |
+          bash templates/java-repo/scripts/pr-policy-selftest.sh
+          python3 templates/java-repo/scripts/review_gate.py --selftest
+          python3 templates/java-repo/scripts/coverage_gate.py --selftest
+
+      - name: Kit workflows and settings are valid YAML/JSON
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, yaml
+          for p in pathlib.Path("templates/java-repo/.github").rglob("*.yml"):
+              yaml.safe_load(p.read_text(encoding="utf-8")); print("ok", p)
+          json.loads(pathlib.Path("templates/java-repo/.github/rulesets/main.json").read_text()); print("ok ruleset")
+          PY

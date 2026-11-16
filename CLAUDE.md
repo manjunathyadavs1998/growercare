@@ -7,7 +7,16 @@ Scale (confirmed worst case):
 - 1 case per user per day, 5–10 comments per case
 - target growth to 1B users
 
-This repo contains **design documentation, Claude skills and agents**, plus **`gc-backend/`**: the Maven backend (it becomes its own repo later; see `docs/architecture/04_REPOSITORIES.md`).
+This repo holds the **architecture, ADRs, cross-cutting specs, Claude skills/agents and the repo kit**. Code lives in **one repository per service** (ADR-017):
+
+| Repository | What |
+|---|---|
+| [growercare-platform-libs](https://github.com/manjunathyadavs1998/growercare-platform-libs) | `gc-parent` + shared libraries, released by tag to GitHub Packages (v1.0.0) |
+| [growercare-identity-access-service](https://github.com/manjunathyadavs1998/growercare-identity-access-service) | IAM (port 8081), image `ghcr.io/manjunathyadavs1998/identity-access-service` |
+| [growercare-case-service](https://github.com/manjunathyadavs1998/growercare-case-service) | Cases (port 8082), image `ghcr.io/manjunathyadavs1998/case-service` |
+| [growercare-local-platform](https://github.com/manjunathyadavs1998/growercare-local-platform) | Local infra (Postgres, Redis, Keycloak, Kafka + Debezium, SeaweedFS) + end-to-end `smoke.sh` |
+
+Local clones on this machine: `D:/MSA63/repos/<repository>`. Each code repository has its own `CLAUDE.md`.
 
 ## Where things are
 | Topic | Doc |
@@ -19,9 +28,10 @@ This repo contains **design documentation, Claude skills and agents**, plus **`g
 | Comments & partition-based purge | `docs/syngenta/05_CASE_COMMENTS_DESIGN.md` |
 | Architecture overview, 14 services | `docs/architecture/00_OVERVIEW.md`, `docs/architecture/01_SERVICES/` |
 | Patterns, stack, repos, scaling, frontend, AWS | `docs/architecture/02–07_*.md` |
-| Decisions | `docs/architecture/adr/ADR-001…016` (013: no ORM, hand-written SQL · 014: Maven · 015: JSON event payloads until AWS · 016: attachments in case-service first) |
-| RDS schema (normalisation, keys, partitions, DB roles) | `docs/backend/01_RDS_SCHEMA.md` |
-| Feature specs (rules, examples, API, traceability) | `docs/specs/<service>/` (e.g. `iam/01-grant-administration.md`, `case/01-case-access-scope.md`) |
+| Decisions | `docs/architecture/adr/ADR-001…017` (013: no ORM, hand-written SQL · 014: Maven · 015: JSON event payloads until AWS · 016: attachments in case-service first · 017: one repository per service, env-only config) |
+| Database schemas | `docs/schema.md` in each service repository |
+| Specs | platform: `docs/specs/platform/`; service specs: `docs/specs/<service>/` **in the service repository** |
+| Repo kit (CI, PR policy, Claude review, CodeQL, ruleset, hooks) | `templates/java-repo/`, applied by `scripts/apply-java-repo-kit.sh <repo-dir> lib\|service` |
 | Superseded (appliance version, kept for history) | `docs/BUSINESS_REQUIREMENTS.md` |
 
 ## Project skills (`.claude/skills/`)
@@ -47,7 +57,7 @@ Java backend: `spec-driven-development` (load first for any feature), `java-back
 3. **Events only through the outbox**; consumers are idempotent (inbox).
 4. **Country differences** go into country profiles or compliance packs, never `if (country == …)`.
 5. **Redis is never a system of record.**
-6. **Contract-first:** OpenAPI/Avro in `gc-contracts` before implementation.
+6. **Contract-first:** OpenAPI in the service repository (`contracts/`), event JSON Schemas in `gc-event-contracts` (libs), before implementation.
 7. **Migrations** are expand → migrate → contract across all shard schemas.
 8. **Data older than 90 days after closure** is served from Snowflake via `data-lifecycle-service`.
 9. **Reporting:** run tests before claiming they pass; report actual results.
@@ -55,43 +65,36 @@ Java backend: `spec-driven-development` (load first for any feature), `java-back
 11. **Spec-driven development, always:** spec (`docs/specs/<service>/`) → parameterized tests from its example rows (failing) → code → green → sync. No code without a spec rule; no spec rule without a test row.
 12. **Tests are parameterized by default** (`@ParameterizedTest`; row names = spec example IDs). Plain `@Test` only for wiring checks or single-scenario examples.
 
-## Backend: local development (`gc-backend/`)
-- **Stack:** Java 21, Spring Boot 4.1.2, Maven multi-module, PostgreSQL 17, Redis 7.4, Keycloak 26, Kafka 4.3 (KRaft) + Debezium 3.6 Connect, SeaweedFS 3.97 (S3 API, port 8333).
-- **Events (SPEC-PLAT-04):** outbox → Debezium → `<domain>.<aggregate>.events`; contracts in `gc-backend/contracts/events/*.schema.json`; consumers use `msg.inbox` + DLQ `dlq.<group>`. Skill: `event-contract`.
-- **Attachments (SPEC-CASE-05):** presigned S3 upload → `complete` → scan poller (checksum, EICAR test scanner locally, magic bytes, EXIF/GPS stripping) → clean/quarantine bucket; downloads via 60 s presigned GET. Code: `application/Attachments`, `AttachmentScanJob`, `ScanPipeline` (Spring-free), `adapters/out/storage/S3ObjectStore`.
-- **Modules:**
-  - libraries: `gc-common`, `gc-shard-routing`, `gc-security`, `gc-outbox`, `gc-test-support`;
-  - services: `identity-access-service` (port 8081) and `case-service` (port 8082).
-- **Start the infrastructure:**
-  ```
-  cd gc-backend/local-dev
-  cp .env.example .env
-  docker compose up -d --wait
-  ```
-  The Docker CLI is at `%LOCALAPPDATA%/Programs/DockerDesktop/resources/bin` (Docker Desktop doesn't add it to PATH).
-- **Build and test:** `cd gc-backend && mvn -B verify`. Docker must be running for the `*IT` tests.
-- **Run a service:** `mvn -pl services/<svc> -am spring-boot:run -Dspring-boot.run.profiles=local`. The `local` profile applies the dev seed (Keycloak users ⇄ IAM grants).
+## Backend: how the pieces fit (ADR-017)
+- **Stack:**
+  - Java 21, Spring Boot 4.1.2, Maven;
+  - PostgreSQL 17, Redis 7.4, Keycloak 26.8;
+  - Kafka 4.3 (KRaft) + Debezium 3.6 Connect;
+  - SeaweedFS 3.97 (S3 API).
+- **Service-to-service:** network only. case-service calls IAM over HTTPS (`IAM_BASE_URL`, client-credentials token). Events go outbox → Debezium → Kafka.
+- **Configuration:** environment variables only.
+  - No defaults for hosts, URLs, users, passwords, secrets or buckets.
+  - A service refuses to start, naming every missing variable.
+  - `.env.example` in each repo documents them.
+  - AWS: Secrets Manager → External Secrets → env.
+- **Local, end to end:**
+  1. In growercare-local-platform: `cp .env.example .env && docker compose up -d --wait`.
+  2. Start the services, either way:
+     - in each service repository: `cp .env.example .env && mvn -B package jib:dockerBuild -DskipTests && docker compose up -d`;
+     - or the released images: `docker compose -f compose.services.yml up -d` in the platform.
+  3. `./debezium/register.sh`, then `./smoke.sh` (exit code = failed checks).
+- **Docker CLI:** `%LOCALAPPDATA%/Programs/DockerDesktop/resources/bin` (not on PATH).
 - **Keycloak:**
   - realm `growercare` at http://localhost:8180;
-  - dev users: `grower.in1`, `grower.in2`, `grower.br1`, `care.in`, `agro.in`, `tm.in`, `admin.in`, `care.br`, `retailer.in`, `retailer2.in`;
-  - passwords are in `local-dev/keycloak/growercare-realm.json`;
-  - the `gc-dev-cli` client allows password login for smoke tests.
-- **DB roles:** the service connects as `<db>_app` (DML only); Flyway runs as `<db>_owner`. Never give the app role DDL rights.
-- **End to end:**
-  1. `mvn -B package -DskipTests`
-  2. `local-dev/run-services.sh start`
-  3. `local-dev/debezium/register.sh` (registers the outbox connectors; needs the migrations from step 2)
-  4. `local-dev/smoke.sh` (exit code = failed checks)
-  5. `local-dev/run-services.sh stop`
-
-  The first case-service start migrates all 128 shards (~2 min).
-- **API docs:** Swagger UI at http://localhost:8081/swagger-ui/index.html and http://localhost:8082/swagger-ui/index.html (local profile only). Committed contracts are in `gc-backend/contracts/`.
+  - dev users `grower.in1`, `grower.in2`, `grower.br1`, `care.in`, `agro.in`, `tm.in`, `admin.in`, `care.br`, `retailer.in`, `retailer2.in`;
+  - passwords are in the platform's `keycloak/growercare-realm.json`.
+- **Libraries locally without a packages token:** `mvn install -Drevision=1.0.0` in growercare-platform-libs at tag `v1.0.0`.
 
 ## Repository and GitHub (SPEC-PLAT-02, `CONTRIBUTING.md`)
-- **Remote:** `github.com/manjunathyadavs1998/growercare` (**public**). The `gh` CLI is at `C:/Program Files/GitHub CLI/gh.exe`. Commits use the GitHub no-reply email (repo-local `git config user.email`).
+- **Remotes:** `github.com/manjunathyadavs1998/growercare` and the four code repositories above (all **public**). The `gh` CLI is at `C:/Program Files/GitHub CLI/gh.exe`. Commits use the GitHub no-reply email (repo-local `git config user.email`).
 - **Never commit to or push `main` directly.** Branch `<type>/<name>`, use Conventional Commit messages, open a PR whose body contains `Spec: docs/specs/...` (and `Tests: n/a – …` only if no production code changed), then squash-merge when green.
 - **Required checks:**
-  - `backend-ci / verify`: all tests, contract drift, **merged line coverage ≥ 80%** and the Sonar quality gate;
+  - `verify`: in code repos, all tests + contract drift + **line coverage ≥ 80 %**; here, the kit checks;
   - `pr-policy / policy`;
   - `claude-review`: blocks on Critical/High findings (SPEC-PLAT-03).
 

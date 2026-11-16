@@ -14,10 +14,10 @@
   | Repository | Owns | Releases |
   |---|---|---|
   | `growercare-platform-libs` | `gc-parent` (build rules), `gc-common`, `gc-security`, `gc-outbox`, `gc-shard-routing`, `gc-test-support`, `gc-event-contracts` (JSON Schemas) | Jars to **GitHub Packages**, semver, on tag `vX.Y.Z` |
-  | `growercare-identity-access-service` | IAM code, migrations, OpenAPI contract, specs | Image `ghcr.io/<owner>/growercare-identity-access-service` |
-  | `growercare-case-service` | case-service code, migrations, OpenAPI contract, specs | Image `ghcr.io/<owner>/growercare-case-service` |
+  | `growercare-identity-access-service` | IAM code, migrations, OpenAPI contract, specs | Image `ghcr.io/<owner>/identity-access-service` |
+  | `growercare-case-service` | case-service code, migrations, OpenAPI contract, specs | Image `ghcr.io/<owner>/case-service` |
   | `growercare-local-platform` | Local infrastructure (Postgres + per-service DB init, Redis, Keycloak realm, Kafka, Debezium Connect + connector configs, SeaweedFS), end-to-end `smoke.sh` | — |
-  | `growercare` | Architecture, ADRs, cross-cutting specs, Claude skills/agents, **reusable GitHub workflows** called by every code repository (pinned by SHA) | — |
+  | `growercare` | Architecture, ADRs, cross-cutting specs, Claude skills/agents, and the **repo kit** (`templates/java-repo`: workflows, scripts, ruleset, hooks) that `scripts/apply-java-repo-kit.sh` copies into every code repository | — |
 
   - **History is preserved:** each repository is extracted with `git filter-repo`.
   - **Services depend on libraries by version.** A library change is a libs release plus a version-bump PR per service. A service never depends on another service's code.
@@ -27,6 +27,7 @@
     - Locally: a git-ignored `.env` documented by a committed `.env.example`.
     - AWS: Secrets Manager → External Secrets → Kubernetes Secret → `envFrom` (built with the deployment repo).
   - **Images:** built with Jib (no Dockerfile), on a distroless Java 21 base, running as non-root, configured only by environment variables.
+- **Governance:** each repository carries its own copy of the kit, not cross-repository reusable workflows. The workflows need the governance scripts at runtime, and cross-repo SHA pins would have to be re-pinned in every repository after each kit change. Re-applying the kit brings a repository back in sync, and Dependabot keeps the pinned actions current in each one.
 - **Consequences:**
   - Plus: each service is understood, built, tested, released and deployed alone; ownership is clear; and nothing secret is committed.
   - Minus: a shared-library change takes a release and bumps; there are five repositories to govern (rulesets, CI, secrets); GitHub Packages needs a token even for public packages (CI uses `GITHUB_TOKEN`; locally a PAT, or `mvn install` of the libs).

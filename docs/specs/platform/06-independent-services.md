@@ -1,6 +1,6 @@
 # SPEC-PLAT-06: Independent service repositories, versioned libraries, environment-only configuration
 - **Requirements:** owner request (2026-11-16): separate services, network communication, configuration from environment/secrets; ADR-017
-- **Status:** Agreed (2026-11-16)
+- **Status:** Implemented (2026-11-16; libs v1.0.0 released)
 - **Owner:** platform (all repositories)
 
 ## 1. Behaviour (rules)
@@ -14,7 +14,7 @@
 | PLAT-R78 | a service repository | — | commits `.env.example` listing every variable the service reads, with a one-line description; `.env` is git-ignored |
 | PLAT-R79 | a service repository | `mvn -B package jib:dockerBuild` (or CI on `main`) | produces an image on a distroless Java 21 base, running as non-root, whose only configuration input is the environment |
 | PLAT-R80 | `growercare-local-platform` up + both service images on its network | `smoke.sh` | 0 failed checks (the same scenarios as before the split) |
-| PLAT-R81 | any code repository | PR | the same gates as before: `verify` (tests, 80 % line coverage, contract drift), PR policy, Claude review (blocks on Critical/High), CodeQL. Run by **reusable workflows** from `growercare`, pinned by SHA; `main` protected with no bypass |
+| PLAT-R81 | any code repository | PR | the same gates as before: `verify` (tests, 80 % line coverage, contract drift), PR policy, Claude review (blocks on Critical/High), CodeQL. Each repository carries the **repo kit** from `growercare` (`scripts/apply-java-repo-kit.sh`); `main` is protected with no bypass |
 
 ## 2. Examples
 | Example | Rule | Input | Expected |
