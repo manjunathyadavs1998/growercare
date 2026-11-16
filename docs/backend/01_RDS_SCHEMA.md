@@ -241,6 +241,16 @@ SLA state is **not stored** (it would drift). It is computed from `sla_started_a
 | `msg.inbox` | (`consumer_group`, `event_id`) | Idempotent consumers: the row is written in the side effect's transaction and a duplicate is skipped. Index on `processed_at`; 7-day retention job |
 | `<shard>.outbox` retention | — | Daily job deletes rows older than 3 days. Debezium has already streamed them from the WAL |
 
+## 5c. Attachments (SPEC-CASE-05, migrations common V6 / shard V6 / IAM V6)
+| Object | Key | Notes |
+|---|---|---|
+| `ref.attachment_type_rule` | (`kind`, `content_type`) | D7 allow-list with `max_bytes` (25 MB images/documents, 100 MB MP4). Reference data, so a country profile can narrow it later |
+| `<shard>.case_attachment.scan_status` | — | `AWAITING_UPLOAD → PENDING → CLEAN \| INFECTED \| REJECTED`, `AWAITING_UPLOAD → EXPIRED`. Partial index on (`scan_status`, `created_at`) for unfinished rows drives the scan poller (`SKIP LOCKED`) and the 24 h expiry job |
+| `<shard>.case_attachment.comment_id` | FK (`case_id`, `comment_id`) → `case_comment` | D9: a comment attachment is a case attachment linked to one comment, and inherits the comment's visibility. `case_comment_attachment` (V2) is **deprecated** (dropped in a later contract step) |
+| `object_key` | — | `<shard>/<caseId>/<attachmentId>`: ids only, never file names (PRV-5). Buckets (staging, clean, quarantine) are configuration |
+| `latitude` / `longitude` | — | Stay NULL in v1: precise location is PII (PRV-5) and needs field-level encryption first. EXIF GPS is stripped from images |
+| `iam.permission` `case:attach` | — | Granted to every role with `comment:post-public` or `comment:post-partner` (9 roles) |
+
 ## 6. Ready for Snowflake
 - **Every row carries what the warehouse needs:** `country_code`, `case_id` (time-ordered, decodable), `created_at`/`updated_at`, `version`. Debezium CDC rows are therefore self-describing (doc 03).
 - **Facts aren't hidden in JSON,** so Snowflake RAW → CURATED needs no JSON parsing for business fields.
