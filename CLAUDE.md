@@ -23,6 +23,7 @@ Local clones on this machine: `D:/MSA63/repos/<repository>`. Each code repositor
 |---|---|
 | Company & regulatory context | `docs/syngenta/01_COMPANY_ANALYSIS.md` |
 | Business requirements (IDs: IAM, ACC, CASE, CMT, DATA, ID, FIN…) | `docs/syngenta/02_BUSINESS_REQUIREMENTS.md` |
+| **Phase 1 PRD** (India pilot: journeys J1–J9, services, UI, delivery plan) | `docs/prd/01_PHASE1_PRD.md` |
 | CDC → Kafka → Snowflake, 90-day hot window | `docs/syngenta/03_DATA_PLATFORM_DESIGN.md` |
 | DB-generated sharded IDs (`case_id`, 15-digit `case_no`) | `docs/syngenta/04_ID_GENERATION_DESIGN.md` |
 | Comments & partition-based purge | `docs/syngenta/05_CASE_COMMENTS_DESIGN.md` |
