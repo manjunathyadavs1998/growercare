@@ -15,6 +15,7 @@
 | PLAT-R79 | a service repository | `mvn -B package jib:dockerBuild` (or CI on `main`) | produces an image on a distroless Java 21 base, running as non-root, whose only configuration input is the environment |
 | PLAT-R80 | `growercare-local-platform` up + both service images on its network | `smoke.sh` | 0 failed checks (the same scenarios as before the split) |
 | PLAT-R81 | any code repository | PR | the same gates as before: `verify` (tests, 80 % line coverage, contract drift), PR policy, Claude review (blocks on Critical/High), CodeQL. Each repository carries the **repo kit** from `growercare` (`scripts/apply-java-repo-kit.sh`); `main` is protected with no bypass |
+| PLAT-R82 | a configuration object that holds a secret (database password, S3 secret/access key, HMAC or encryption key) | it is printed (`toString`, logs, actuator, exception messages) | the secret is masked (`****`) or omitted; the value itself stays usable by the code that needs it. Records override the generated `toString` |
 
 ## 2. Examples
 | Example | Rule | Input | Expected |
@@ -25,6 +26,7 @@
 | PLAT-E91 | R73 | clone `growercare-case-service` alone; `mvn -B verify` | green (libs resolved by version) |
 | PLAT-E92 | R74 | tag `v1.0.0` on libs | packages visible in GitHub Packages at 1.0.0 |
 | PLAT-E93 | R80 | local platform + both images from GHCR | `smoke.sh` 0 failures |
+| PLAT-E94 | R82 | `toString()` of case-service `MigrationProperties` / `AttachmentProperties`, grower-service `MigrationProperties` with real-looking secrets, and with nulls | no secret text; `****` where a secret is set, `null` where not |
 
 ## 3. Traceability
 | Rule / Example | Test |
@@ -35,3 +37,4 @@
 | R74 / E92 | libs release workflow |
 | R79 | service CI `image` job |
 | R80 / E93 | `growercare-local-platform/smoke.sh` |
+| R82 / E94 | case-service `MigrationPropertiesTest`; grower-service `GrowerSchemaConfigIT#migrationPropertiesNeverPrintTheOwnerPassword` |
