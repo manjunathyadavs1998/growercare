@@ -24,7 +24,7 @@
 | PLAT-R20 | `main` | someone pushes directly, force-pushes or deletes it | rejected by the ruleset (D1). Meanwhile the `pre-push` hook rejects it locally |
 | PLAT-R21 | a pull request into `main` | merge | requires green `backend-ci / verify` and `pr-policy / policy`, branch up to date, all conversations resolved, linear history |
 | PLAT-R22 | PR title | not `type(scope)?: subject` (types: feat, fix, docs, refactor, test, build, ci, chore, perf, revert; subject 3–72 chars) | `pr-policy` fails |
-| PLAT-R23 | PR body | has no `Spec:` line naming `docs/specs/…` (or `Spec: n/a – <reason>`) | `pr-policy` fails (spec-driven development) |
+| PLAT-R23 | PR body | has no `Spec:` line naming `docs/specs/…` (or `Spec: n/a – <reason>`), unless the PR **author** is `dependabot[bot]` (its spec is R28; the author comes from the GitHub event, so a branch name cannot claim it) | `pr-policy` fails (spec-driven development) |
 | PLAT-R24 | PR changes production code (`gc-backend/**/src/main/**`) | no change under `gc-backend/**/src/test/**` and no `Tests: n/a – <reason>` line | `pr-policy` fails (no code without tests) |
 | PLAT-R25 | PR changes a migration (`**/db/**/*.sql`) | `docs/backend/01_RDS_SCHEMA.md` not changed | `pr-policy` warns (schema doc must stay true) |
 | PLAT-R26 | head branch | not `type/short-name` (same types, lower-case) | `pr-policy` fails |
@@ -50,12 +50,14 @@
 | PLAT-E38 | files `…/src/main/X.java`, body `Tests: n/a – log message only` | pass |
 | PLAT-E39 | branch `feat/sla-timers` · `my-branch` | pass · fail R26 |
 | PLAT-E40 | branch `dependabot/maven/…` | pass (bot branches exempt) |
+| PLAT-E41 | author `dependabot[bot]`, title `build(deps): bump postgres`, body without a `Spec:` line | pass (R23 exemption) |
+| PLAT-E42 | author `someone`, branch `dependabot/x`, body without a `Spec:` line | fail R23 (a branch name alone does not exempt) |
 
 ## 3. Traceability
 | Rule | Artefact |
 |---|---|
 | R20, R21 | `.github/rulesets/main.json`, `scripts/apply-repo-settings.sh`; meanwhile `.githooks/pre-push` |
-| R22–R26 | `.github/workflows/pr-policy.yml` → `scripts/pr-policy.sh`; examples E30–E40 in `scripts/pr-policy-selftest.sh` (runs in CI) |
+| R22–R26 | `.github/workflows/pr-policy.yml` → `scripts/pr-policy.sh`; examples E30–E42 in `scripts/pr-policy-selftest.sh` (runs in CI) |
 | R27 | `.github/CODEOWNERS` |
 | R28 | `.github/dependabot.yml` |
 | R29 | `.githooks/`, `scripts/install-hooks.sh` |

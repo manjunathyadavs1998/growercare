@@ -23,7 +23,7 @@
 | PLAT-R41 | merged report | overall LINE coverage < 80.0% | `backend-ci / verify` fails with the measured value |
 | PLAT-R42 | a PR | `verify` ran | a sticky PR comment and the job summary show overall and per-module line/branch coverage against the threshold |
 | PLAT-R43 | `SONAR_TOKEN` secret exists | push to main / PR | SonarQube Cloud analysis runs in `verify`; a failed quality gate fails the check. Without the token the step is skipped with a notice |
-| PLAT-R44 | a same-repo PR is opened, updated or marked ready | — | Claude reviews the diff against the project rules (`CLAUDE.md` conventions, spec-driven development, security skill checklist) and posts inline comments for concrete issues |
+| PLAT-R44 | a same-repo PR is opened, updated or marked ready, by a person or by **Dependabot** (`allowed_bots: dependabot`; no other bot, and Dependabot runs only get Dependabot secrets) | — | Claude reviews the diff against the project rules (`CLAUDE.md` conventions, spec-driven development, security skill checklist) and posts inline comments for concrete issues |
 | PLAT-R45 | Claude's structured output | gate script runs | one finding = `{severity ∈ Critical/High/Medium/Low, file, line, title, detail, rule}`; a summary table is posted (sticky), each finding becomes a check annotation, and labels `review:critical` / `review:high` / `review:medium` / `review:low` / `review:clean` are set |
 | PLAT-R46 | ≥ 1 Critical or High finding | — | `claude-review` fails (required check ⇒ PR blocked) |
 | PLAT-R47 | only Medium/Low, or none | — | `claude-review` passes |
